@@ -4,7 +4,7 @@ import (
   "fmt"
   "context"
   // "encoding/json"
-  elastic "github.com/olivere/elastic"
+  elastic "gopkg.in/olivere/elastic.v5"
 )
 
 type Song struct {
@@ -76,7 +76,7 @@ func SetupClient(url, index, indexType, mapping string) (*SongStore, error) {
 	// Obtain a client and connect to the default Elasticsearch installation
 	// on 127.0.0.1:9200. Of course you can configure your client to connect
 	// to other hosts and configure it in various other ways.
-	client, err := elastic.NewClient()
+	client, err := elastic.NewSimpleClient(elastic.SetURL("http://127.0.0.1:9200"))
 	if err != nil {
 		// Handle error
 		return nil, err
@@ -161,6 +161,10 @@ func (c *SongStore) GetSong(file string) (*elastic.GetResult, error) {
 }
 
 func main() {
+  _, err := SetupClient("http://127.0.0.1:9200", "songs", "song", mapping)
 
+  if err != nil {
+    fmt.Println(err)
+  }
 }
 
