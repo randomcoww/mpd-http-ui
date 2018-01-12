@@ -76,7 +76,7 @@ func SetupClient(url, index, indexType, mapping string) (*SongStore, error) {
 	// Obtain a client and connect to the default Elasticsearch installation
 	// on 127.0.0.1:9200. Of course you can configure your client to connect
 	// to other hosts and configure it in various other ways.
-	client, err := elastic.NewSimpleClient(elastic.SetURL("http://127.0.0.1:9200"))
+	client, err := elastic.NewSimpleClient(elastic.SetURL(url))
 	if err != nil {
 		// Handle error
 		return nil, err
@@ -160,8 +160,26 @@ func (c *SongStore) GetSong(file string) (*elastic.GetResult, error) {
   return get, nil
 }
 
+
 func main() {
-  _, err := SetupClient("http://127.0.0.1:9200", "songs", "song", mapping)
+  c, err := SetupClient("http://127.0.0.1:9200", "songs", "song", mapping)
+
+  if err != nil {
+    fmt.Println(err)
+  }
+
+  testIndex := Song{
+    File: "testfile",
+    Title: "testtitle",
+  }
+
+  err = c.IndexSong(testIndex)
+
+  if err != nil {
+    fmt.Println(err)
+  }
+
+  _, err = c.GetSong("testfile")
 
   if err != nil {
     fmt.Println(err)
