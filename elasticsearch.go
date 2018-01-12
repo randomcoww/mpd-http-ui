@@ -2,7 +2,8 @@ package main
 
 import (
   "fmt"
-  "encoding/json"
+  "context"
+  // "encoding/json"
   elastic "github.com/olivere/elastic"
 )
 
@@ -60,12 +61,12 @@ type SongStore struct {
   url       string
   index     string
   indexType string
-  ctx       Context
+  ctx       context.Context
   Client    *elastic.Client
 }
 
 
-func SetupClient(url, index, indexType, mapping string) *Client, error {
+func SetupClient(url, index, indexType, mapping string) (*SongStore, error) {
   // create elasticsearch client based on example:
   // https://olivere.github.io/elastic/
 
@@ -106,7 +107,7 @@ func SetupClient(url, index, indexType, mapping string) *Client, error {
 
 	if !exists {
 		// Create a new index.
-		createIndex, err := client.CreateIndex(index).BodyString(mapping).Do(c.ctx)
+		createIndex, err := client.CreateIndex(index).BodyString(mapping).Do(ctx)
 		if err != nil {
 			// Handle error
       return nil, err
@@ -116,11 +117,10 @@ func SetupClient(url, index, indexType, mapping string) *Client, error {
 		}
 	}
 
-  //
   c := &SongStore{
     url:    url,
     ctx:    ctx,
-    client: client,
+    Client: client,
     index:  index,
     indexType:  indexType,
   }
@@ -129,13 +129,14 @@ func SetupClient(url, index, indexType, mapping string) *Client, error {
 }
 
 
-func (c *Client) IndexSong(s Song) error {
-  c.Index().
+func (c *SongStore) IndexSong(s Song) error {
+  _, err := c.Client.Index().
 		Index(c.index).
 		Type(c.indexType).
 		Id(s.File).
 		BodyJson(s).
-		Do(ctx)
+		Do(c.ctx)
+
 	if err != nil {
 		// Handle error
 		return err
@@ -144,17 +145,22 @@ func (c *Client) IndexSong(s Song) error {
 }
 
 
-func (c *Client) GetSong(file string) *elastic,GetService, error {
-  get, err := client.Get().
+func (c *SongStore) GetSong(file string) (*elastic.GetResult, error) {
+  get, err := c.Client.Get().
 		Index(c.index).
 		Type(c.indexType).
 		Id(file).
-		Do(ctx)
+		Do(c.ctx)
+
 	if err != nil {
 		// Handle error
     return nil, err
 	}
-	if get1.Found {
-    return get, nil
-	}
+
+  return get, nil
 }
+
+func main() {
+
+}
+
