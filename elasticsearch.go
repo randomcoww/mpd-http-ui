@@ -1,10 +1,10 @@
 package main
 
 import (
-  "fmt"
-  "context"
-  // "encoding/json"
-  elastic "gopkg.in/olivere/elastic.v5"
+	"fmt"
+	"context"
+	// "encoding/json"
+	elastic "gopkg.in/olivere/elastic.v5"
 )
 
 type Song struct {
@@ -48,7 +48,7 @@ const mapping = `
 				"artist":{
 					"type":"text"
 				},
-        "genre":{
+				"genre":{
 					"type":"text"
 				}
 			}
@@ -58,19 +58,19 @@ const mapping = `
 
 
 type SongStore struct {
-  url       string
-  index     string
-  indexType string
-  ctx       context.Context
-  Client    *elastic.Client
+	url       string
+	index     string
+	indexType string
+	ctx       context.Context
+	Client    *elastic.Client
 }
 
 
 func SetupClient(url, index, indexType, mapping string) (*SongStore, error) {
-  // create elasticsearch client based on example:
-  // https://olivere.github.io/elastic/
+	// create elasticsearch client based on example:
+	// https://olivere.github.io/elastic/
 
-  // Starting with elastic.v5, you must pass a context to execute each service
+	// Starting with elastic.v5, you must pass a context to execute each service
 	ctx := context.Background()
 
 	// Obtain a client and connect to the default Elasticsearch installation
@@ -86,7 +86,7 @@ func SetupClient(url, index, indexType, mapping string) (*SongStore, error) {
 	info, code, err := client.Ping(url).Do(ctx)
 	if err != nil {
 		// Handle error
-    return nil, err
+		return nil, err
 	}
 	fmt.Printf("Elasticsearch returned with code %d and version %s\n", code, info.Version.Number)
 
@@ -94,11 +94,11 @@ func SetupClient(url, index, indexType, mapping string) (*SongStore, error) {
 	esversion, err := client.ElasticsearchVersion(url)
 	if err != nil {
 		// Handle error
-    return nil, err
+		return nil, err
 	}
 	fmt.Printf("Elasticsearch version %s\n", esversion)
 
-  // Use the IndexExists service to check if a specified index exists.
+	// Use the IndexExists service to check if a specified index exists.
 	exists, err := client.IndexExists(index).Do(ctx)
 	if err != nil {
 		// Handle error
@@ -110,27 +110,27 @@ func SetupClient(url, index, indexType, mapping string) (*SongStore, error) {
 		createIndex, err := client.CreateIndex(index).BodyString(mapping).Do(ctx)
 		if err != nil {
 			// Handle error
-      return nil, err
+			return nil, err
 		}
 		if !createIndex.Acknowledged {
 			// Not acknowledged
 		}
 	}
 
-  c := &SongStore{
-    url:    url,
-    ctx:    ctx,
-    Client: client,
-    index:  index,
-    indexType:  indexType,
-  }
+	c := &SongStore{
+		url:    url,
+		ctx:    ctx,
+		Client: client,
+		index:  index,
+		indexType:  indexType,
+	}
 
-  return c, nil
+	return c, nil
 }
 
 
 func (c *SongStore) IndexSong(s Song) error {
-  _, err := c.Client.Index().
+	_, err := c.Client.Index().
 		Index(c.index).
 		Type(c.indexType).
 		Id(s.File).
@@ -141,12 +141,12 @@ func (c *SongStore) IndexSong(s Song) error {
 		// Handle error
 		return err
 	}
-  return nil
+	return nil
 }
 
 
 func (c *SongStore) GetSong(file string) (*elastic.GetResult, error) {
-  get, err := c.Client.Get().
+	get, err := c.Client.Get().
 		Index(c.index).
 		Type(c.indexType).
 		Id(file).
@@ -154,35 +154,34 @@ func (c *SongStore) GetSong(file string) (*elastic.GetResult, error) {
 
 	if err != nil {
 		// Handle error
-    return nil, err
+		return nil, err
 	}
 
-  return get, nil
+	return get, nil
 }
 
 
 func main() {
-  c, err := SetupClient("http://127.0.0.1:9200", "songs", "song", mapping)
+	c, err := SetupClient("http://127.0.0.1:9200", "songs", "song", mapping)
 
-  if err != nil {
-    fmt.Println(err)
-  }
+	if err != nil {
+		fmt.Println(err)
+	}
 
-  testIndex := Song{
-    File: "testfile",
-    Title: "testtitle",
-  }
+	testIndex := Song{
+		File: "testfile",
+		Title: "testtitle",
+	}
 
-  err = c.IndexSong(testIndex)
+	err = c.IndexSong(testIndex)
 
-  if err != nil {
-    fmt.Println(err)
-  }
+	if err != nil {
+		fmt.Println(err)
+	}
 
-  _, err = c.GetSong("testfile")
+	_, err = c.GetSong("testfile")
 
-  if err != nil {
-    fmt.Println(err)
-  }
+	if err != nil {
+		fmt.Println(err)
+	}
 }
-
