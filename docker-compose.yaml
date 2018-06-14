@@ -1,0 +1,15 @@
+version: "3.3"
+
+services:
+  mpd:
+    image: randomcoww/mpd:0.20.20
+    ports:
+    - "8000:8000"
+    - "6600:6600"
+    volumes:
+    - ./test/mpd_mount:/mpd/music
+  elasticsearch:
+    image: elasticsearch:5-alpine
+    ports:
+    - "9200:9200"
+    - "9300:9300"
