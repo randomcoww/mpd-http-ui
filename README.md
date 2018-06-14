@@ -6,7 +6,7 @@ Elasticsearch:
 - http://localhost:9200
 
 MPD (control):
-- http://localhost:6600
+- tcp: localhost:6600
 
 MPD (stream):
 - http://localhost:8000
