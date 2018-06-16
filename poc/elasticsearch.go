@@ -161,6 +161,22 @@ func (c *SongStore) GetSong(file string) (*elastic.GetResult, error) {
 }
 
 
+func (c *SongStore) DeleteSong(file string) (*elastic.DeleteResponse, error) {
+	delete, err := c.Client.Delete().
+		Index(c.index).
+		Type(c.indexType).
+		Id(file).
+		Do(c.ctx)
+
+	if err != nil {
+		// Handle error
+		return nil, err
+	}
+
+	return delete, nil
+}
+
+
 func main() {
 	c, err := SetupClient("http://127.0.0.1:9200", "songs", "song", mapping)
 
@@ -184,4 +200,12 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	deleted, err := c.DeleteSong("testfile")
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(deleted)
 }
