@@ -27,6 +27,22 @@ func NewMpdClient(proto, addr string) (*MpdClient) {
   return m
 }
 
+// need to be pinging MPD regularly so connection stays up
+func (m *MpdClient) CreatePinger() (error) {
+  for {
+    select {
+    case <- time.After(1000 * time.Millisecond):
+      err := m.Conn.Ping()
+
+      if err != nil {
+        fmt.Printf("ping %s \n", err)
+      } else {
+        fmt.Printf("ping \n")
+      }
+    }
+  }
+}
+
 // get or refresh mpd connection
 func (m *MpdClient) MpdConn() (*MpdClient, error) {
 
@@ -46,6 +62,8 @@ func (m *MpdClient) MpdConn() (*MpdClient, error) {
 			time.Sleep(1000 * time.Millisecond)
 
 		} else {
+      go m.CreatePinger()
+
 			m.Conn = c
 		  return m, nil
 		}

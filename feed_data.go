@@ -86,19 +86,23 @@ func NewDataFeeder() (error) {
 				attrs, err := mpdClient.Conn.ListAllInfo(c)
 
 				if err == nil {
-					fmt.Printf("%s \n", attrs[0])
+					if len(attrs) > 0 {
+						attr := attrs[0]
 
-					addIndex := Song{
-						File: c,
-						Title: attrs[0]["Title"],
+						fmt.Printf("%s \n", attr)
+
+						addIndex := Song{
+							File: c,
+							Title: attr["Title"],
+						}
+
+						err = esClient.Index(addIndex)
+						if err != nil {
+							fmt.Printf("error indexing %s \n", err)
+						}
+
+						fmt.Printf("es add %s %s \n", c, addIndex)
 					}
-
-					err = esClient.Index(addIndex)
-					if err != nil {
-						fmt.Printf("error indexing %s \n", err)
-					}
-
-					fmt.Printf("es add %s %s \n", c, addIndex)
 
 				} else {
 					fmt.Printf("error parsing %s %s \n", c, err)
