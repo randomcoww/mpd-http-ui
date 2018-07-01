@@ -12,6 +12,7 @@ import (
 )
 
 type MpdClient struct {
+  Ready chan bool
   Conn  *mpd.Client
   proto string
   addr  string
@@ -20,52 +21,46 @@ type MpdClient struct {
 // create new MPD client
 func NewMpdClient(proto, addr string) (*MpdClient) {
   m := &MpdClient{
+    Ready: make(chan bool),
     proto: proto,
     addr:  addr,
   }
 
+  go m.ConnectAndKeepalive()
   return m
 }
 
-// need to be pinging MPD regularly so connection stays up
-func (m *MpdClient) CreatePinger() (error) {
+// get or refresh mpd connection
+func (m *MpdClient) ConnectAndKeepalive() {
   for {
-    select {
-    case <- time.After(1000 * time.Millisecond):
+    if m.Conn != nil {
       err := m.Conn.Ping()
 
       if err != nil {
-        fmt.Printf("ping %s \n", err)
+        fmt.Printf("MPD ping")
+
+        m.Ready <- true
+        continue
+
       } else {
-        fmt.Printf("ping \n")
+        fmt.Printf("MPD connection broke?")
+
+        m.Ready <- false
+        m.Conn.Close()
       }
     }
-  }
-}
 
-// get or refresh mpd connection
-func (m *MpdClient) MpdConn() (*MpdClient, error) {
-
-  if m.Conn != nil {
-    err := m.Conn.Ping()
+    c, err := mpd.Dial(m.proto, m.addr)
 
     if err != nil {
-      return m, nil
+      m.Conn = c
+
+      fmt.Println("MPD (re)connect")
+      m.Ready <- false
+      defer(m.Conn.Close())
+      continue
     }
-  }
 
-	for {
-  	c, err := mpd.Dial(m.proto, m.addr)
-
-	  if err != nil {
-	    fmt.Println("cannot connect to MPD")
-			time.Sleep(1000 * time.Millisecond)
-
-		} else {
-      go m.CreatePinger()
-
-			m.Conn = c
-		  return m, nil
-		}
+    time.Sleep(1000 * time.Millisecond)
 	}
 }

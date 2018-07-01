@@ -80,7 +80,7 @@ func NewDataFeeder() (error) {
 				fmt.Printf("error connecting to elasticsearch %s \n", err)
 			}
 
-      _, err = mpdClient.MpdConn()
+      // _, err = mpdClient.MpdConn()
 
       if err == nil {
 				attrs, err := mpdClient.Conn.ListAllInfo(c)
