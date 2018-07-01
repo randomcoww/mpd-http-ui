@@ -1,7 +1,11 @@
+//
+// get add and remove item events by parsing the mpd log
+//
+
 package main
 
 import (
-	"fmt"
+	// "fmt"
 	"time"
 	"syscall"
 	"bufio"
@@ -9,8 +13,7 @@ import (
 	"strings"
 )
 
-
-type Watcher struct {
+type LogEvents struct {
 	added   chan string
 	deleted chan string
 }
@@ -20,8 +23,8 @@ var (
 	deletedString = "update: removing "
 )
 
-
-func NewWatcher(logFile string) (*Watcher, error) {
+// process to read log to create add and remove events
+func NewLogEventParser(logFile string) (*LogEvents, error) {
 	syscall.Mkfifo(logFile, 0600)
 
 	f, err := os.OpenFile(logFile, os.O_CREATE, os.ModeNamedPipe)
@@ -31,18 +34,18 @@ func NewWatcher(logFile string) (*Watcher, error) {
 
 	reader := bufio.NewReader(f)
 
-	w := &Watcher{
+	e := &LogEvents{
 		added: make(chan string),
 		deleted: make(chan string),
 	}
 
-	go w.readLog(reader)
+	go e.readLog(reader)
 
-	return w, nil
+	return e, nil
 }
 
-
-func (w *Watcher) readLog(reader *bufio.Reader) {
+// parse logs and send items to add and remove channels
+func (e *LogEvents) readLog(reader *bufio.Reader) {
 	for {
 		line, err := reader.ReadString('\n')
 
@@ -53,37 +56,11 @@ func (w *Watcher) readLog(reader *bufio.Reader) {
 
 		if strings.Contains(line, addedString) {
 			str := strings.Split(line, addedString)
-			w.added <- str[len(str)-1]
+			e.added <- strings.TrimSuffix(str[len(str)-1], "\n")
 
 		} else if strings.Contains(line, deletedString) {
 			str := strings.Split(line, deletedString)
-			w.deleted <- str[len(str)-1]
+			e.deleted <- strings.TrimSuffix(str[len(str)-1], "\n")
 		}
 	}
-}
-
-
-func (w *Watcher) readChannel() {
-	for {
-		select {
-		case c := <- w.added:
-			fmt.Println("add", c)
-
-		case c := <- w.deleted:
-			fmt.Println("delete", c)
-
-		case <-time.After(100 * time.Millisecond):
-		}
-	}
-}
-
-
-func main() {
-	w, err := NewWatcher("env/mpd_mount/logs/log")
-
-	if err != nil {
-		panic(err)
-	}
-
-	w.readChannel()
 }
