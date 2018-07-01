@@ -1,7 +1,7 @@
 ### Setup
 
-    docker-compose up
-    
+    docker-compose up --build
+
 Elasticsearch:
 - http://localhost:9200
 
