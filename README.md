@@ -13,6 +13,10 @@ MPD (stream):
 - http://localhost:8000
 
 
+Need to clean containers after each run to test indexing new items each time.
+
+    docker-compose rm -f
+
 #### Environment test
 
 Connect to control using `ncmpcpp`:
