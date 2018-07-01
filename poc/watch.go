@@ -51,11 +51,13 @@ func (w *Watcher) readLog(reader *bufio.Reader) {
 			continue
 		}
 
-		if strings.HasPrefix(line, addedString) {
-			w.added <- strings.TrimPrefix(line, addedString)
+		if strings.Contains(line, addedString) {
+			str := strings.Split(line, addedString)
+			w.added <- str[len(str)-1]
 
-		} else if strings.HasPrefix(line, deletedString) {
-			w.deleted <- strings.TrimPrefix(line, deletedString)
+		} else if strings.Contains(line, deletedString) {
+			str := strings.Split(line, deletedString)
+			w.deleted <- str[len(str)-1]
 		}
 	}
 }
@@ -77,7 +79,7 @@ func (w *Watcher) readChannel() {
 
 
 func main() {
-	w, err := NewWatcher("log")
+	w, err := NewWatcher("env/mpd_mount/logs/log")
 
 	if err != nil {
 		panic(err)
