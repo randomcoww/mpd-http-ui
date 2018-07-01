@@ -1,13 +1,15 @@
 version: "3.3"
-
 services:
   mpd:
-    image: randomcoww/mpd:0.20.20
+    build:
+      context: ./mpd_build
+      dockerfile: Dockerfile
     ports:
     - "8000:8000"
     - "6600:6600"
     volumes:
-    - ./test/mpd_mount:/mpd/music
+    - ./mpd_mount/music:/mpd/music
+    - ./mpd_mount/logs:/mpd/logs
   elasticsearch:
     image: elasticsearch:5-alpine
     ports:
