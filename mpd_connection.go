@@ -74,14 +74,15 @@ func (c *MpdClient) reconnectLoop() {
 
 func (c *MpdClient) GetInfo(mpdPath string) (map[string]string) {
   for {
-    attrs, err := c.Conn.ListAllInfo(mpdPath)
+    attrs, err := c.Conn.ListInfo(mpdPath)
 
     if err == nil {
       if len(attrs) > 0 {
-  fmt.Printf("Get MPD attrs %s\n", attrs[0])
-
+        fmt.Printf("Got MPD attrs (%d) %s\n", len(attrs), attrs[0])
         return attrs[0]
+
       } else {
+        fmt.Printf("Got empty attrs\n")
         return make(map[string]string)
       }
 

@@ -14,9 +14,10 @@ import (
 type Song struct {
 	File         string `json:"file"`
 	Date         string `json:"date,omitempty"`
-	AlbumArtist  string `json:"albumartist,omitempty"`
+	Duration     string `json:"duration,omitempty"`
+	Composer     string `json:"composer,omitempty"`
 	Album        string `json:"album,omitempty"`
-	Track        int    `json:"track,omitempty"`
+	Track        string `json:"track,omitempty"`
 	Title        string `json:"title,omitempty"`
 	Artist       string `json:"artist,omitempty"`
 	Genre        string `json:"genre,omitempty"`
@@ -37,7 +38,10 @@ const esMapping = `
 				"date":{
 					"type":"date"
 				},
-				"albumartist":{
+				"duration":{
+					"type":"text"
+				},
+				"composer":{
 					"type":"text"
 				},
 				"album":{
@@ -82,7 +86,14 @@ func NewDataFeeder() (error) {
 			attr := mpdClient.GetInfo(c)
 			addIndex := Song{
 				File: c,
-				Title: attr["Title"],
+				Date: attr["date"],
+				Duration: attr["duration"],
+				Composer: attr["composer"],
+				Album: attr["album"],
+				Track: attr["track"],
+				Title: attr["title"],
+				Artist: attr["artist"],
+				Genre: attr["genre"],
 			}
 			esClient.Index(addIndex)
 

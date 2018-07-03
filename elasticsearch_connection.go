@@ -134,12 +134,12 @@ func (c *EsClient) Index(s Song) (*elastic.IndexResponse) {
 			Do(ctx)
 
 		if err == nil {
-			fmt.Println("Created Elasticsearch entry %s", s)
+			fmt.Printf("Created Elasticsearch entry %s\n", s)
 			return create
 
 		} else {
 			c.setStatusDown()
-			fmt.Println("Start Elasticsearch ready wait")
+			fmt.Printf("Start Elasticsearch ready wait\n")
 			<-c.Ready
 		}
 	}
@@ -155,12 +155,12 @@ func (c *EsClient) Delete(id string) (*elastic.DeleteResponse) {
 			Do(ctx)
 
 		if err == nil {
-			fmt.Println("Deleted Elasticsearch entry %s", id)
+			fmt.Printf("Deleted Elasticsearch entry %s\n", id)
 			return delete
 
 		} else {
 			c.setStatusDown()
-			fmt.Println("Start Elasticsearch ready wait")
+			fmt.Printf("Start Elasticsearch ready wait\n")
 			<-c.Ready
 		}
 	}
