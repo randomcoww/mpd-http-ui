@@ -5,62 +5,90 @@
 package main
 
 import (
-	"fmt"
-	"time"
-  // elastic "gopkg.in/olivere/elastic.v5"
+  "fmt"
+  "time"
   mpd "github.com/fhs/gompd/mpd"
 )
 
 type MpdClient struct {
-  Ready chan bool
-  Conn  *mpd.Client
+  Ready chan struct{}
+  Down chan struct{}
+  Conn *mpd.Client
   proto string
-  addr  string
+  addr string
 }
 
 // create new MPD client
 func NewMpdClient(proto, addr string) (*MpdClient) {
-  m := &MpdClient{
-    Ready: make(chan bool),
+  c := &MpdClient{
+    Ready: make(chan struct{}, 1),
+    Down: make(chan struct{}, 1),
     proto: proto,
-    addr:  addr,
+    addr: addr,
   }
 
-  go m.ConnectAndKeepalive()
-  return m
+  c.setStatusDown()
+  go c.reconnectLoop()
+
+  return c
 }
 
-// get or refresh mpd connection
-func (m *MpdClient) ConnectAndKeepalive() {
+
+func (c *MpdClient) setStatusReady() {
+  c.Ready <- struct{}{}
+  fmt.Printf("MPD ready\n")
+}
+
+func (c *MpdClient) setStatusDown() {
+  c.Down <- struct{}{}
+  fmt.Printf("MPD down\n")
+}
+
+
+func (c *MpdClient) reconnectLoop() {
   for {
-    if m.Conn != nil {
-      err := m.Conn.Ping()
+    select {
 
-      if err != nil {
-        fmt.Printf("MPD ping")
+    case <-c.Down:
+      for {
+        time.Sleep(1000 * time.Millisecond)
 
-        m.Ready <- true
-        continue
+        fmt.Printf("Connecting to MPD...\n")
+        conn, err := mpd.Dial(c.proto, c.addr)
+        defer conn.Close()
 
-      } else {
-        fmt.Printf("MPD connection broke?")
+        if err == nil {
+          c.Conn = conn
 
-        m.Ready <- false
-        m.Conn.Close()
+          c.setStatusReady()
+          break
+
+        } else {
+          fmt.Printf("Error connecting to MPD\n")
+        }
       }
     }
+  }
+}
 
-    c, err := mpd.Dial(m.proto, m.addr)
 
-    if err != nil {
-      m.Conn = c
+func (c *MpdClient) GetInfo(mpdPath string) (map[string]string) {
+  for {
+    attrs, err := c.Conn.ListAllInfo(mpdPath)
 
-      fmt.Println("MPD (re)connect")
-      m.Ready <- false
-      defer(m.Conn.Close())
-      continue
+    if err == nil {
+      if len(attrs) > 0 {
+  fmt.Printf("Get MPD attrs %s\n", attrs[0])
+
+        return attrs[0]
+      } else {
+        return make(map[string]string)
+      }
+
+    } else {
+      c.setStatusDown()
+      fmt.Printf("Start MPD ready wait\n")
+      <-c.Ready
     }
-
-    time.Sleep(1000 * time.Millisecond)
-	}
+  }
 }

@@ -62,67 +62,33 @@ const esMapping = `
 
 // main
 func NewDataFeeder() (error) {
-  mpdClient := NewMpdClient("tcp", "localhost:6600")
-  logParser, err := NewLogEventParser("env/mpd_mount/logs/log")
-	esClient := NewEsClient("http://127.0.0.1:9200", "songs", "song", esMapping)
+	logParser, err := NewLogEventParser("env/mpd_mount/logs/log")
 
   if err != nil {
     return err
   }
 
+	mpdClient := NewMpdClient("tcp", "localhost:6600")
+	<-mpdClient.Ready
+
+	esClient := NewEsClient("http://127.0.0.1:9200", "songs", "song", esMapping)
+	<-esClient.Ready
+
   for {
     select {
 		case c := <- logParser.added:
-			fmt.Println("add_event:", c)
+			fmt.Printf("Add_event: %s\n", c)
 
-			_, err := esClient.EsConn()
-			if err != nil {
-				fmt.Printf("error connecting to elasticsearch %s \n", err)
+			attr := mpdClient.GetInfo(c)
+			addIndex := Song{
+				File: c,
+				Title: attr["Title"],
 			}
-
-      // _, err = mpdClient.MpdConn()
-
-      if err == nil {
-				attrs, err := mpdClient.Conn.ListAllInfo(c)
-
-				if err == nil {
-					if len(attrs) > 0 {
-						attr := attrs[0]
-
-						fmt.Printf("%s \n", attr)
-
-						addIndex := Song{
-							File: c,
-							Title: attr["Title"],
-						}
-
-						err = esClient.Index(addIndex)
-						if err != nil {
-							fmt.Printf("error indexing %s \n", err)
-						}
-
-						fmt.Printf("es add %s %s \n", c, addIndex)
-					}
-
-				} else {
-					fmt.Printf("error parsing %s %s \n", c, err)
-				}
-      }
+			esClient.Index(addIndex)
 
 		case c := <- logParser.deleted:
-			fmt.Println("delete_event:", c)
-
-			_, err := esClient.EsConn()
-			if err != nil {
-				fmt.Printf("error connecting to elasticsearch %s \n", err)
-			}
-
-			_, err = esClient.Delete(c)
-			if err != nil {
-				fmt.Printf("error deleting %s \n", err)
-			}
-
-			fmt.Printf("es delete %s \n", c)
+			fmt.Printf("delete_event: %s\n", c)
+			esClient.Delete(c)
 
 		case <- time.After(1000 * time.Millisecond):
     }
