@@ -5,7 +5,6 @@
 package main
 
 import (
-	// "fmt"
 	"time"
 	"syscall"
 	"bufio"
@@ -14,8 +13,10 @@ import (
 )
 
 type LogEvents struct {
-	added   chan string
-	deleted chan string
+	MpdReady 	chan bool
+	EsReady		chan bool
+	added   	chan string
+	deleted 	chan string
 }
 
 var (

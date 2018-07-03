@@ -1,10 +1,13 @@
+//
+// Add and remove to elasticsearch
+//
+
 package main
 
 import (
 	"fmt"
 	"context"
 	"time"
-	// "encoding/json"
 	elastic "gopkg.in/olivere/elastic.v5"
 )
 
@@ -13,127 +16,166 @@ var (
 )
 
 type EsClient struct {
-	url       string
-	index     string
+	Ready chan struct{}
+	Down chan struct{}
+	url string
+	index string
 	indexType string
-  mapping   string
-	// Ctx       context.Context
-	Client    *elastic.Client
+	mapping string
+	Conn *elastic.Client
 }
 
 // new ES client
 func NewEsClient(url, index, indexType, mapping string) (*EsClient) {
-  s := &EsClient{
-    url: url,
-    index: index,
-    indexType: indexType,
-    mapping: mapping,
-  }
+	c := &EsClient{
+		Ready: make(chan struct{}, 1),
+		Down: make(chan struct{}, 1),
+		url: url,
+		index: index,
+		indexType: indexType,
+		mapping: mapping,
+	}
 
-  return s
-}
+	c.setStatusDown()
+	go c.reconnectLoop()
 
-// get or wait for elasticsearch connection
-func (c *EsClient) EsConn() (*EsClient, error) {
-
-  if c.Client != nil {
-    // ping := s.Client.Ping()
-    //
-    // ping.URL(url)
-    // result, statusCode, err := ping.Do(s.Ctx)
-    //
-    // if err != nil {
-    //   return s.Client, nil
-    // }
-
-    return c, nil
-  }
-
-  for {
-    client, err := elastic.NewSimpleClient(elastic.SetURL(c.url))
-
-    if err != nil {
-      fmt.Println("cannot connect to Elasticsearch")
-			time.Sleep(1000 * time.Millisecond)
-
-    } else {
-      c.Client = client
-      // s.Ctx = context.Background()
-
-      // ping test
-      info, code, err := client.Ping(c.url).Do(ctx)
-    	if err != nil {
-    		// Handle error
-    		return nil, err
-    	}
-			fmt.Printf("Elasticsearch returned with code %d and version %s\n", code, info.Version.Number)
-
-      // index test
-      exists, err := client.IndexExists(c.index).Do(ctx)
-    	if err != nil {
-    		// Handle error
-    		return nil, err
-    	}
-
-      // create if it doesn't exist
-    	if !exists {
-    		// Create a new index.
-    		createIndex, err := client.CreateIndex(c.index).BodyString(c.mapping).Do(ctx)
-    		if err != nil {
-    			// Handle error
-    			return nil, err
-    		}
-    		if !createIndex.Acknowledged {
-    			// Not acknowledged
-    		}
-    	}
-
-      return c, nil
-    }
-  }
+	return c
 }
 
 
-func (c *EsClient) Index(s Song) error {
-	_, err := c.Client.Index().
-		Index(c.index).
-		Type(c.indexType).
-		Id(s.File).
-		BodyJson(s).
-		Do(ctx)
+func (c *EsClient) setStatusReady() {
+	c.Ready <- struct{}{}
+	fmt.Printf("Elasticsearch ready\n")
+}
 
+func (c *EsClient) setStatusDown() {
+	c.Down <- struct{}{}
+	fmt.Printf("Elasticsearch down\n")
+}
+
+
+func (c *EsClient) reconnectLoop() {
+	for {
+		select {
+
+		case <-c.Down:
+			for {
+				time.Sleep(1000 * time.Millisecond)
+
+				fmt.Printf("Connecting to Elasticsearch...\n")
+				conn, err := elastic.NewSimpleClient(elastic.SetURL(c.url))
+
+				if err == nil {
+					c.Conn = conn
+
+					// get version
+					err = c.testVersion()
+					if err != nil {
+						fmt.Printf("Checking Elasticsearch version...\n")
+						continue
+					}
+
+					// detect or create index
+					err = c.createIndex()
+					if err != nil {
+						fmt.Printf("Checking or creating Elasticsearch index...\n")
+						continue
+					}
+
+					c.setStatusReady()
+					break
+
+				} else {
+					fmt.Printf("Error connecting to Elasrticsearch\n")
+				}
+			}
+		}
+	}
+}
+
+
+func (c *EsClient) testVersion() (error) {
+	// ping test
+	info, code, err := c.Conn.Ping(c.url).Do(ctx)
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("Elasticsearch returned with code %d and version %s\n", code, info.Version.Number)
 	return nil
 }
 
 
-func (c *EsClient) Get(file string) (*elastic.GetResult, error) {
-	get, err := c.Client.Get().
-		Index(c.index).
-		Type(c.indexType).
-		Id(file).
-		Do(ctx)
-
+func (c *EsClient) createIndex() (error) {
+	// index test
+	exists, err := c.Conn.IndexExists(c.index).Do(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return get, nil
+	if !exists {
+		_, err := c.Conn.CreateIndex(c.index).BodyString(c.mapping).Do(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 
-func (c *EsClient) Delete(file string) (*elastic.DeleteResponse, error) {
-	delete, err := c.Client.Delete().
-		Index(c.index).
-		Type(c.indexType).
-		Id(file).
-		Do(ctx)
+func (c *EsClient) Index(s Song) (*elastic.IndexResponse) {
+	for {
+		create, err := c.Conn.Index().
+			Index(c.index).
+			Type(c.indexType).
+			Id(s.File).
+			BodyJson(s).
+			Do(ctx)
 
-	if err != nil {
-		return nil, err
+		if err == nil {
+			fmt.Printf("Created Elasticsearch entry %s\n", s)
+			return create
+
+		} else {
+			c.setStatusDown()
+			fmt.Printf("Start Elasticsearch ready wait\n")
+			<-c.Ready
+		}
 	}
-
-	return delete, nil
 }
+
+
+func (c *EsClient) Delete(id string) (*elastic.DeleteResponse) {
+	for {
+		delete, err := c.Conn.Delete().
+			Index(c.index).
+			Type(c.indexType).
+			Id(id).
+			Do(ctx)
+
+		if err == nil {
+			fmt.Printf("Deleted Elasticsearch entry %s\n", id)
+			return delete
+
+		} else {
+			c.setStatusDown()
+			fmt.Printf("Start Elasticsearch ready wait\n")
+			<-c.Ready
+		}
+	}
+}
+
+// func (c *EsClient) Get(file string) (*elastic.GetResult, error) {
+// 	get, err := c.Client.Get().
+// 		Index(c.index).
+// 		Type(c.indexType).
+// 		Id(file).
+// 		Do(ctx)
+//
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	return get, nil
+// }
