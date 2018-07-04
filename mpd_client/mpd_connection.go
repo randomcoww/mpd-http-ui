@@ -13,7 +13,6 @@ import (
 
 type MpdClient struct {
   Ready chan struct{}
-  Watch chan struct{}
   Down chan struct{}
   Conn *mpd.Client
   proto string
@@ -41,7 +40,6 @@ var (
 func NewMpdClient(proto, addr string) (*MpdClient) {
   c := &MpdClient{
     Ready: make(chan struct{}, 1),
-    Watch: make(chan struct{}, 1),
     Down: make(chan struct{}, 1),
     proto: proto,
     addr: addr,
@@ -50,7 +48,6 @@ func NewMpdClient(proto, addr string) (*MpdClient) {
 
   c.setStatusDown()
   go c.reconnectLoop()
-  go c.setupWatcher()
 
   return c
 }
@@ -58,7 +55,6 @@ func NewMpdClient(proto, addr string) (*MpdClient) {
 
 func (c *MpdClient) setStatusReady() {
   c.Ready <- struct{}{}
-  c.Watch <- struct{}{}
   fmt.Printf("MPD ready\n")
 }
 
@@ -97,7 +93,7 @@ func (c *MpdClient) reconnectLoop() {
 
 // reimplement watch included in log watch
 func (c *MpdClient) setupWatcher() {
-  <-c.Watch
+  <-c.Ready
 
   for {
     changed, err := c.Conn.

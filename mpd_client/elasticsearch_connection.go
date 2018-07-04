@@ -124,58 +124,16 @@ func (c *EsClient) createIndex() (error) {
 }
 
 
-func (c *EsClient) Index(s Song) (*elastic.IndexResponse) {
-	for {
-		create, err := c.Conn.Index().
-			Index(c.index).
-			Type(c.indexType).
-			Id(s.File).
-			BodyJson(s).
-			Do(ctx)
+func (c *EsClient) Get(file string) (*elastic.GetResult, error) {
+	get, err := c.Client.Get().
+		Index(c.index).
+		Type(c.indexType).
+		Id(file).
+		Do(ctx)
 
-		if err == nil {
-			fmt.Printf("Created Elasticsearch entry %s\n", s)
-			return create
-
-		} else {
-			c.setStatusDown()
-			fmt.Printf("Start Elasticsearch ready wait\n")
-			<-c.Ready
-		}
+	if err != nil {
+		return nil, err
 	}
+
+	return get, nil
 }
-
-
-func (c *EsClient) Delete(id string) (*elastic.DeleteResponse) {
-	for {
-		delete, err := c.Conn.Delete().
-			Index(c.index).
-			Type(c.indexType).
-			Id(id).
-			Do(ctx)
-
-		if err == nil {
-			fmt.Printf("Deleted Elasticsearch entry %s\n", id)
-			return delete
-
-		} else {
-			c.setStatusDown()
-			fmt.Printf("Start Elasticsearch ready wait\n")
-			<-c.Ready
-		}
-	}
-}
-
-// func (c *EsClient) Get(file string) (*elastic.GetResult, error) {
-// 	get, err := c.Client.Get().
-// 		Index(c.index).
-// 		Type(c.indexType).
-// 		Id(file).
-// 		Do(ctx)
-//
-// 	if err != nil {
-// 		return nil, err
-// 	}
-//
-// 	return get, nil
-// }
