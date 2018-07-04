@@ -82,7 +82,7 @@ func (c *MpdClient) GetInfo(mpdPath string) (map[string]string) {
         return attrs[0]
 
       } else {
-        fmt.Printf("Got empty attrs\n")
+        fmt.Printf("Got MPD empty attrs\n")
         return make(map[string]string)
       }
 

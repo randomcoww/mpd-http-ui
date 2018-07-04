@@ -7,7 +7,6 @@ package main
 import (
 	"fmt"
 	"time"
-  // elastic "gopkg.in/olivere/elastic.v5"
 )
 
 // elasticsearch stuff
@@ -64,24 +63,29 @@ const esMapping = `
 	}
 }`
 
+var (
+	esIndex, esDocument = "songs", "song"
+)
+
+
 // main
-func NewDataFeeder() (error) {
-	logParser, err := NewLogEventParser("env/mpd_mount/logs/log")
+func NewDataFeeder(logFile, mpdUrl, esUrl string) (error) {
+	logParser, err := NewLogEventParser(logFile)
 
   if err != nil {
     return err
   }
 
-	mpdClient := NewMpdClient("tcp", "localhost:6600")
+	mpdClient := NewMpdClient("tcp", mpdUrl)
 	<-mpdClient.Ready
 
-	esClient := NewEsClient("http://127.0.0.1:9200", "songs", "song", esMapping)
+	esClient := NewEsClient(esUrl, esIndex, esDocument, esMapping)
 	<-esClient.Ready
 
   for {
     select {
 		case c := <- logParser.added:
-			fmt.Printf("Add_event: %s\n", c)
+			fmt.Printf("Add item event: %s\n", c)
 
 			attr := mpdClient.GetInfo(c)
 			addIndex := Song{
@@ -98,7 +102,7 @@ func NewDataFeeder() (error) {
 			esClient.Index(addIndex)
 
 		case c := <- logParser.deleted:
-			fmt.Printf("delete_event: %s\n", c)
+			fmt.Printf("Delete item event: %s\n", c)
 			esClient.Delete(c)
 
 		case <- time.After(1000 * time.Millisecond):

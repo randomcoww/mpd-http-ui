@@ -2,14 +2,14 @@ version: "3.3"
 services:
   mpd:
     build:
-      context: ./mpd_build
+      context: ./mpd
       dockerfile: Dockerfile
     ports:
     - "8000:8000"
     - "6600:6600"
     volumes:
-    - ./mpd_mount/music:/mpd/music
-    - ./mpd_mount/logs:/mpd/logs
+    - ./env/mpd_mount/music:/mpd/music
+    - ./env/mpd_mount/logs:/mpd/logs
   elasticsearch:
     image: elasticsearch:5-alpine
     ports:

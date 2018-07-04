@@ -5,6 +5,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 	"syscall"
 	"bufio"
@@ -26,6 +27,7 @@ var (
 
 // process to read log to create add and remove events
 func NewLogEventParser(logFile string) (*LogEvents, error) {
+	fmt.Printf("Create MPD log pipe: %s\n", logFile)
 	syscall.Mkfifo(logFile, 0600)
 
 	f, err := os.OpenFile(logFile, os.O_CREATE, os.ModeNamedPipe)
@@ -54,6 +56,8 @@ func (e *LogEvents) readLog(reader *bufio.Reader) {
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
+
+		fmt.Printf("%s", line)
 
 		if strings.Contains(line, addedString) {
 			str := strings.Split(line, addedString)
