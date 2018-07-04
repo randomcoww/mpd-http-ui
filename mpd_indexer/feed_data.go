@@ -63,18 +63,23 @@ const esMapping = `
 	}
 }`
 
+var (
+	esIndex, esDocument = "songs", "song"
+)
+
+
 // main
-func NewDataFeeder() (error) {
-	logParser, err := NewLogEventParser("../env/mpd_mount/logs/log")
+func NewDataFeeder(logFile, mpdUrl, esUrl string) (error) {
+	logParser, err := NewLogEventParser(logFile)
 
   if err != nil {
     return err
   }
 
-	mpdClient := NewMpdClient("tcp", "localhost:6600")
+	mpdClient := NewMpdClient("tcp", mpdUrl)
 	<-mpdClient.Ready
 
-	esClient := NewEsClient("http://127.0.0.1:9200", "songs", "song", esMapping)
+	esClient := NewEsClient(esUrl, esIndex, esDocument, esMapping)
 	<-esClient.Ready
 
   for {
