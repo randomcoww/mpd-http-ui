@@ -5,6 +5,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 	"syscall"
 	"bufio"
@@ -54,6 +55,8 @@ func (e *LogEvents) readLog(reader *bufio.Reader) {
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
+
+		fmt.Printf("%s", line)
 
 		if strings.Contains(line, addedString) {
 			str := strings.Split(line, addedString)

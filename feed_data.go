@@ -81,7 +81,10 @@ func NewDataFeeder() (error) {
   for {
     select {
 		case c := <- logParser.added:
-			fmt.Printf("Add_event: %s\n", c)
+			fmt.Printf("Add item event: %s\n", c)
+
+			// attrs, _ = mpdClient.Conn.PlaylistContents("dir1/test1.cue")
+			// fmt.Printf("Got MPD playlist file %s\n", attrs)
 
 			attr := mpdClient.GetInfo(c)
 			addIndex := Song{
@@ -98,8 +101,11 @@ func NewDataFeeder() (error) {
 			esClient.Index(addIndex)
 
 		case c := <- logParser.deleted:
-			fmt.Printf("delete_event: %s\n", c)
+			fmt.Printf("Delete item event: %s\n", c)
 			esClient.Delete(c)
+
+		case e := <- mpdClient.Events:
+			fmt.Printf("MPD event reader: %s\n", e)
 
 		case <- time.After(1000 * time.Millisecond):
     }
