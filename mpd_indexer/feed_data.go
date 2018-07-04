@@ -72,9 +72,9 @@ var (
 func NewDataFeeder(logFile, mpdUrl, esUrl string) (error) {
 	logParser, err := NewLogEventParser(logFile)
 
-  if err != nil {
-    return err
-  }
+	if err != nil {
+		return err
+	}
 
 	mpdClient := NewMpdClient("tcp", mpdUrl)
 	<-mpdClient.Ready
@@ -82,8 +82,8 @@ func NewDataFeeder(logFile, mpdUrl, esUrl string) (error) {
 	esClient := NewEsClient(esUrl, esIndex, esDocument, esMapping)
 	<-esClient.Ready
 
-  for {
-    select {
+	for {
+		select {
 		case c := <- logParser.added:
 			fmt.Printf("Add item event: %s\n", c)
 
@@ -106,8 +106,8 @@ func NewDataFeeder(logFile, mpdUrl, esUrl string) (error) {
 			esClient.Delete(c)
 
 		case <- time.After(1000 * time.Millisecond):
-    }
-  }
+		}
+	}
 
-  return nil
+	return nil
 }
