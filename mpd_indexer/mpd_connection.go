@@ -18,22 +18,6 @@ type MpdClient struct {
   addr string
 }
 
-var (
-  watchEvents = []string{
-    "database",
-    "update",
-    "stored_playlist",
-    "playlist",
-    "mixer",
-    "output",
-    "options",
-    // "partition",
-    "sticker",
-    "subscription",
-    "message",
-  }
-)
-
 // create new MPD client
 func NewMpdClient(proto, addr string) (*MpdClient) {
   c := &MpdClient{
