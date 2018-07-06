@@ -1,6 +1,5 @@
 ### Setup
 
-    cd env
     docker-compose up --build
 
 Elasticsearch:
