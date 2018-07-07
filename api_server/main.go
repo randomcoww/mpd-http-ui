@@ -26,11 +26,11 @@ func main() {
 	fmt.Printf("Start")
 	flag.Parse()
 
-  r := mux.NewRouter()
+	r := mux.NewRouter()
 
 	r.HandleFunc("/healthcheck", healthCheck).Methods("GET")
 	r.HandleFunc("/playlist", querytPlaylistItems).Methods("GET")
-  r.HandleFunc("/search/{query}", search).Methods("GET")
+	r.HandleFunc("/search/{query}", search).Methods("GET")
 
 	mpdClient = NewMpdClient("tcp", *mpdUrl)
 	esClient = NewEsClient(*esUrl, esIndex, esDocument)
