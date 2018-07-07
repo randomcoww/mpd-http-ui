@@ -21,20 +21,17 @@ type EsClient struct {
 	url string
 	index string
 	indexType string
-	mapping string
 	conn *elastic.Client
-	bulk *elastic.BulkService
 }
 
 // new ES client
-func NewEsClient(url, index, indexType, mapping string) (*EsClient) {
+func NewEsClient(url, index, indexType string) (*EsClient) {
 	c := &EsClient{
 		Ready: make(chan struct{}, 1),
 		Down: make(chan struct{}, 1),
 		url: url,
 		index: index,
 		indexType: indexType,
-		mapping: mapping,
 	}
 
 	c.setStatusDown()
@@ -68,7 +65,6 @@ func (c *EsClient) processLoop() {
 
 				if err == nil {
 					c.conn = conn
-					c.bulk = conn.Bulk()
 
 					// get version
 					err = c.testVersion()
@@ -77,31 +73,11 @@ func (c *EsClient) processLoop() {
 						continue
 					}
 
-					// detect or create index
-					err = c.createIndex()
-					if err != nil {
-						fmt.Printf("Checking or creating Elasticsearch index...\n")
-						continue
-					}
-
 					c.setStatusReady()
 					break
 
 				} else {
 					fmt.Printf("Error connecting to Elasrticsearch\n")
-				}
-			}
-
-		case <-time.After(1000 * time.Millisecond):
-			if c.bulk.NumberOfActions() > 0 {
-
-				_, err := c.bulk.Do(ctx)
-
-				if err == nil {
-					fmt.Printf("Processsed elasticsearch bulk operation\n")
-
-				} else {
-					c.setStatusDown()
 				}
 			}
 		}
@@ -121,42 +97,35 @@ func (c *EsClient) testVersion() (error) {
 }
 
 
-func (c *EsClient) createIndex() (error) {
-	// index test
-	exists, err := c.conn.IndexExists(c.index).Do(ctx)
+// search database - go through elasticsearch
+func (c *EsClient) Get(file string) (*elastic.GetResult, error) {
+	get, err := c.conn.Get().
+		Index(c.index).
+		Type(c.indexType).
+		Id(file).
+		Do(ctx)
+
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if !exists {
-		_, err := c.conn.CreateIndex(c.index).BodyString(c.mapping).Do(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return get, nil
 }
 
 
-func (c *EsClient) Index(s Song) {
-  // add to bulk opetation
-	bulk := elastic.NewBulkIndexRequest().
+// search
+func (c *EsClient) Search(query string) (*elastic.SearchResult, error) {
+	search, err := c.conn.Search().
 		Index(c.index).
 		Type(c.indexType).
-		Id(s.File).
-		Doc(s)
+		Query(elastic.NewSimpleQueryStringQuery(query)).
+		Pretty(true).
+		Do(ctx)
 
-	c.bulk.Add(bulk)
-}
+	if err != nil {
+		fmt.Printf("err %s\n", err)
+		return nil, err
+	}
 
-
-func (c *EsClient) Delete(id string) {
-  // add to bulk operation
-	bulk := elastic.NewBulkDeleteRequest().
-		Index(c.index).
-		Type(c.indexType).
-		Id(id)
-
-	c.bulk.Add(bulk)
+	return search, nil
 }
