@@ -22,7 +22,8 @@ type EsClient struct {
 	index string
 	indexType string
 	mapping string
-	Conn *elastic.Client
+	conn *elastic.Client
+	bulk *elastic.BulkService
 }
 
 // new ES client
@@ -37,7 +38,7 @@ func NewEsClient(url, index, indexType, mapping string) (*EsClient) {
 	}
 
 	c.setStatusDown()
-	go c.reconnectLoop()
+	go c.processLoop()
 
 	return c
 }
@@ -54,7 +55,7 @@ func (c *EsClient) setStatusDown() {
 }
 
 
-func (c *EsClient) reconnectLoop() {
+func (c *EsClient) processLoop() {
 	for {
 		select {
 
@@ -66,7 +67,8 @@ func (c *EsClient) reconnectLoop() {
 				conn, err := elastic.NewSimpleClient(elastic.SetURL(c.url))
 
 				if err == nil {
-					c.Conn = conn
+					c.conn = conn
+					c.bulk = conn.Bulk()
 
 					// get version
 					err = c.testVersion()
@@ -89,6 +91,19 @@ func (c *EsClient) reconnectLoop() {
 					fmt.Printf("Error connecting to Elasrticsearch\n")
 				}
 			}
+
+		case <-time.After(1000 * time.Millisecond):
+			if c.bulk.NumberOfActions() > 0 {
+
+				_, err := c.bulk.Do(ctx)
+
+				if err == nil {
+					fmt.Printf("Processsed elasticsearch bulk operation\n")
+
+				} else {
+					c.setStatusDown()
+				}
+			}
 		}
 	}
 }
@@ -96,7 +111,7 @@ func (c *EsClient) reconnectLoop() {
 
 func (c *EsClient) testVersion() (error) {
 	// ping test
-	info, code, err := c.Conn.Ping(c.url).Do(ctx)
+	info, code, err := c.conn.Ping(c.url).Do(ctx)
 	if err != nil {
 		return err
 	}
@@ -108,13 +123,13 @@ func (c *EsClient) testVersion() (error) {
 
 func (c *EsClient) createIndex() (error) {
 	// index test
-	exists, err := c.Conn.IndexExists(c.index).Do(ctx)
+	exists, err := c.conn.IndexExists(c.index).Do(ctx)
 	if err != nil {
 		return err
 	}
 
 	if !exists {
-		_, err := c.Conn.CreateIndex(c.index).BodyString(c.mapping).Do(ctx)
+		_, err := c.conn.CreateIndex(c.index).BodyString(c.mapping).Do(ctx)
 		if err != nil {
 			return err
 		}
@@ -124,44 +139,24 @@ func (c *EsClient) createIndex() (error) {
 }
 
 
-func (c *EsClient) Index(s Song) (*elastic.IndexResponse) {
-	for {
-		create, err := c.Conn.Index().
-			Index(c.index).
-			Type(c.indexType).
-			Id(s.File).
-			BodyJson(s).
-			Do(ctx)
+func (c *EsClient) Index(s Song) {
+  // add to bulk opetation
+	bulk := elastic.NewBulkIndexRequest().
+		Index(c.index).
+		Type(c.indexType).
+		Id(s.File).
+		Doc(s)
 
-		if err == nil {
-			fmt.Printf("Created Elasticsearch entry %s\n", s)
-			return create
-
-		} else {
-			c.setStatusDown()
-			fmt.Printf("Start Elasticsearch ready wait\n")
-			<-c.Ready
-		}
-	}
+	c.bulk.Add(bulk)
 }
 
 
-func (c *EsClient) Delete(id string) (*elastic.DeleteResponse) {
-	for {
-		delete, err := c.Conn.Delete().
-			Index(c.index).
-			Type(c.indexType).
-			Id(id).
-			Do(ctx)
+func (c *EsClient) Delete(id string) {
+  // add to bulk operation
+	bulk := elastic.NewBulkDeleteRequest().
+		Index(c.index).
+		Type(c.indexType).
+		Id(id)
 
-		if err == nil {
-			fmt.Printf("Deleted Elasticsearch entry %s\n", id)
-			return delete
-
-		} else {
-			c.setStatusDown()
-			fmt.Printf("Start Elasticsearch ready wait\n")
-			<-c.Ready
-		}
-	}
+	c.bulk.Add(bulk)
 }
