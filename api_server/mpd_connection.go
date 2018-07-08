@@ -118,6 +118,8 @@ func (c *MpdClient) setupWatcher() {
 	}
 }
 
+// manipulate playlist
+
 // query current playlist items between position start and end
 func  (c *MpdClient) QueryPlaylistItems(start, end int) ([]mpd.Attrs, error) {
 	attrs, err := c.Conn.PlaylistInfo(start, end)
@@ -137,7 +139,7 @@ func (c *MpdClient) MovePlaylistItems(start, end, newPosition int) (error) {
 }
 
 // deletes playlist items between positions start and end
-func (c *MpdClient) DeletePlaylistItem(start, end int) (error) {
+func (c *MpdClient) DeletePlaylistItems(start, end int) (error) {
 	err := c.Conn.Delete(start, end)
 	return err
 }
@@ -145,5 +147,25 @@ func (c *MpdClient) DeletePlaylistItem(start, end int) (error) {
 // clear current playlist
 func (c *MpdClient) ClearPlaylist() (error) {
 	err := c.Conn.Clear()
+	return err
+}
+
+// play/pause/stop
+
+// start playing
+func (c *MpdClient) PlayItem(position int) (error) {
+	err := c.Conn.Play(position)
+	return err
+}
+
+// stop playing
+func (c *MpdClient) Stop() (error) {
+	err := c.Conn.Stop()
+	return err
+}
+
+// pause playing
+func (c *MpdClient) Pause() (error) {
+	err := c.Conn.Pause(true)
 	return err
 }
