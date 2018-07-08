@@ -50,6 +50,7 @@ func NewMpdClient(proto, addr string) (*MpdClient) {
 
 	c.setStatusDown()
 	go c.reconnectLoop()
+	go c.setupWatcher()
 
 	return c
 }
@@ -126,10 +127,10 @@ func  (c *MpdClient) QueryPlaylistItems(start, end int) ([]mpd.Attrs, error) {
 	return attrs, err
 }
 
-// add database item to current playlist at position
-func (c *MpdClient) AddToPlaylist(mpdPath string, position int) (int, error) {
-	id, err := c.Conn.AddID(mpdPath, position)
-	return id, err
+// add database item to current playlist
+func (c *MpdClient) AddToPlaylist(mpdPath string) (error) {
+	err := c.Conn.Add(mpdPath)
+	return err
 }
 
 // moves songs in current playlist between positions start and end to new position position

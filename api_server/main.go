@@ -9,6 +9,7 @@ import (
 	"log"
 	"encoding/json"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/handlers"
 	"net/http"
 	"flag"
 	"strconv"
@@ -24,40 +25,52 @@ var (
 )
 
 
+type response struct {
+	Message string
+}
+
+
 func main() {
+
+	allowedHeaders := handlers.AllowedHeaders([]string{"X-Requested-With"})
+	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
+	allowedMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
+
 	fmt.Printf("Start")
 	flag.Parse()
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/healthcheck", healthCheck).Methods("GET")
+	r.HandleFunc("/healthcheck", healthCheck).
+		Methods("GET")
 
-	r.HandleFunc("/playlist", querytPlaylistItems).
+	r.HandleFunc("/playlist/items", querytPlaylistItems).
 		Queries("start", "{start}").
 		Queries("end", "{end}").
 		Methods("GET")
 
-	r.HandleFunc("/move", movePlaylistItems).
-		Queries("start", "{start}").
-		Queries("end", "{end}").
-		Queries("moveto", "{moveto}").
+	r.HandleFunc("/database/search", search).
+		Queries("q", "{query}").
 		Methods("GET")
 
-	r.HandleFunc("/add", addToPlaylist).
+	r.HandleFunc("/playlist/items", movePlaylistItems).
+		Queries("start", "{start}").
+		Queries("end", "{end}").
+		Queries("pos", "{moveto}").
+		Methods("PUT")
+
+	r.HandleFunc("/playlist/items", deletePlaylistItems).
+		Queries("start", "{start}").
+		Queries("end", "{end}").
+		Methods("DELETE")
+
+	r.HandleFunc("/playlist", addToPlaylist).
 		Queries("path", "{path}").
-		Queries("addto", "{addto}").
-		Methods("GET")
+		Methods("PUT")
 
-	r.HandleFunc("/delete", deletePlaylistItems).
-		Queries("start", "{start}").
-		Queries("end", "{end}").
-		Methods("GET")
+	r.HandleFunc("/playlist", clearPlaylist).
+		Methods("DELETE")
 
-	r.HandleFunc("/clear", clearPlaylist).Methods("GET")
-
-	r.HandleFunc("/search", search).
-		Queries("query", "{query}").
-		Methods("GET")
 
 	mpdClient = NewMpdClient("tcp", *mpdUrl)
 	esClient = NewEsClient(*esUrl, esIndex, esDocument)
@@ -65,150 +78,136 @@ func main() {
 	<-mpdClient.Ready
 	<-esClient.Ready
 
-	fmt.Printf("start\n")
-	log.Fatal(http.ListenAndServe(*listenUrl, r))
+	fmt.Printf("API server start on %s\n", *listenUrl)
+	log.Fatal(http.ListenAndServe(*listenUrl, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(r)))
+}
+
+
+func parseNum(input string) (int) {
+	v, err := strconv.Atoi(input)
+	if err != nil {
+		fmt.Printf("Error parsing param %s: %s\n", input, err)
+		v = -1
+	}
+
+	return v
 }
 
 
 func healthCheck(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("get healthcheck\n")
-	json.NewEncoder(w).Encode("ok")
+	fmt.Printf("Healthcheck\n")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response{"ok"})
 }
 
 
 func querytPlaylistItems(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("get playlist\n")
-
 	params := mux.Vars(r)
-	start, err := strconv.Atoi(params["start"])
-	if err != nil {
-		fmt.Printf("err, %s\n", err)
-		start = -1
-	}
+	fmt.Printf("Query playlist items %s\n", params)
 
-	end, err := strconv.Atoi(params["end"])
-	if err != nil {
-		fmt.Printf("err, %s\n", err)
-		end = -1
-	}
-
-	attrs, err := mpdClient.QueryPlaylistItems(start, end)
-
-	fmt.Printf("get playlist %s %d %d\n", attrs, start, end)
+	attrs, err := mpdClient.QueryPlaylistItems(
+		parseNum(params["start"]),
+		parseNum(params["end"]))
+	w.Header().Set("Content-Type", "application/json")
 
 	if err == nil {
+		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(attrs)
 	} else {
-		json.NewEncoder(w).Encode(err)
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(response{err.Error()})
 	}
 }
 
 
 func movePlaylistItems(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("move playlist\n")
-
 	params := mux.Vars(r)
-	start, err := strconv.Atoi(params["start"])
-	if err != nil {
-		fmt.Printf("err, %s\n", err)
-		start = -1
-	}
+	fmt.Printf("Move playlist items %s\n", params)
 
-	end, err := strconv.Atoi(params["end"])
-	if err != nil {
-		fmt.Printf("err, %s\n", err)
-		end = -1
-	}
-
-	moveTo, err := strconv.Atoi(params["moveto"])
-	if err != nil {
-		fmt.Printf("err, %s\n", err)
-		moveTo = -1
-	}
-
-	err = mpdClient.MovePlaylistItems(start, end, moveTo)
+	err := mpdClient.MovePlaylistItems(
+		parseNum(params["start"]),
+		parseNum(params["end"]),
+		parseNum(params["moveto"]))
+	w.Header().Set("Content-Type", "application/json")
 
 	if err == nil {
-		json.NewEncoder(w).Encode("ok")
+		w.WriteHeader(http.StatusNoContent)
 	} else {
-		json.NewEncoder(w).Encode(err)
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(response{err.Error()})
 	}
 }
 
 
 func addToPlaylist(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("add to playlist\n")
-
 	params := mux.Vars(r)
-	path := params["path"]
+	fmt.Printf("Add to playlist %s\n", params)
 
-	addTo, err := strconv.Atoi(params["addto"])
-	if err != nil {
-		fmt.Printf("err, %s\n", err)
-		addTo = -1
-	}
-
-	id, err := mpdClient.AddToPlaylist(path, addTo)
+	err := mpdClient.AddToPlaylist(
+		params["path"])
+	w.Header().Set("Content-Type", "application/json")
 
 	if err == nil {
-		json.NewEncoder(w).Encode(strconv.Itoa(id))
+		w.WriteHeader(http.StatusNoContent)
 	} else {
-		json.NewEncoder(w).Encode(err)
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(response{err.Error()})
 	}
 }
 
 
 func deletePlaylistItems(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("delete playlist items\n")
-
 	params := mux.Vars(r)
-	start, err := strconv.Atoi(params["start"])
-	if err != nil {
-		fmt.Printf("err, %s\n", err)
-		start = -1
-	}
+	fmt.Printf("Delete playlist items %s\n", params)
 
-	end, err := strconv.Atoi(params["end"])
-	if err != nil {
-		fmt.Printf("err, %s\n", err)
-		end = -1
-	}
-
-	err = mpdClient.DeletePlaylistItems(start, end)
+	err := mpdClient.DeletePlaylistItems(
+		parseNum(params["start"]),
+		parseNum(params["end"]))
+	w.Header().Set("Content-Type", "application/json")
 
 	if err == nil {
-		json.NewEncoder(w).Encode("ok")
+		w.WriteHeader(http.StatusNoContent)
 	} else {
-		json.NewEncoder(w).Encode(err)
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(response{err.Error()})
 	}
 }
 
 
 func clearPlaylist(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("clear playlist items\n")
+	fmt.Printf("Clear playlist items\n")
 
 	err := mpdClient.ClearPlaylist()
+	w.Header().Set("Content-Type", "application/json")
 
 	if err == nil {
-		json.NewEncoder(w).Encode("ok")
+		w.WriteHeader(http.StatusNoContent)
 	} else {
-		json.NewEncoder(w).Encode(err)
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(response{err.Error()})
 	}
 }
 
 
 func search(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	query := params["query"]
+	fmt.Printf("Search database %s\n", params)
 
-	searchResult, err := esClient.Search(query)
+	search, err := esClient.Search(params["query"])
+	w.Header().Set("Content-Type", "application/json")
 
 	if err == nil {
-		fmt.Printf("searchresult %s\n", searchResult)
+		w.WriteHeader(http.StatusOK)
 
-		json.NewEncoder(w).Encode(searchResult.Hits.Hits)
+		var	result []*json.RawMessage
+		for _, hits := range search.Hits.Hits {
+			result = append(result, hits.Source)
+		}
+
+		json.NewEncoder(w).Encode(result)
 	} else {
-		json.NewEncoder(w).Encode(err)
-		fmt.Printf("err %s\n", err)
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(response{err.Error()})
 	}
 }
