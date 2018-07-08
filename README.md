@@ -11,6 +11,8 @@ MPD (control):
 MPD (stream):
 - http://localhost:8000
 
+REST API:
+- http://localhost:3000
 
 Need to clean containers after each run to test indexing new items each time.
 

@@ -34,3 +34,20 @@ services:
     - "-esurl"
     - "http://elasticsearch:9200"
     restart: on-failure
+  api_server:
+    build:
+      context: ./api_server
+      dockerfile: Dockerfile
+    links:
+    - "mpd:mpd"
+    - "elasticsearch:elasticsearch"
+    command:
+    - "-listenurl"
+    - "0.0.0.0:3000"
+    - "-mpdurl"
+    - "mpd:6600"
+    - "-esurl"
+    - "http://elasticsearch:9200"
+    restart: on-failure
+    ports:
+    - "3000:3000"
