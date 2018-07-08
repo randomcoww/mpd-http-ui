@@ -15,6 +15,7 @@ import (
 )
 
 var (
+	listenUrl = flag.String("listenurl", "localhost:3000", "Listen URL")
 	mpdUrl = flag.String("mpdurl", "localhost:6600", "MPD URL")
 	esUrl = flag.String("esurl", "http://localhost:9200", "Elasticsearch URL")
 	esIndex, esDocument = "songs", "song"
@@ -65,7 +66,7 @@ func main() {
 	<-esClient.Ready
 
 	fmt.Printf("start\n")
-	log.Fatal(http.ListenAndServe(":3000", r))
+	log.Fatal(http.ListenAndServe(*listenUrl, r))
 }
 
 
