@@ -50,6 +50,7 @@ func NewMpdClient(proto, addr string) (*MpdClient) {
 
 	c.setStatusDown()
 	go c.reconnectLoop()
+	go c.setupWatcher()
 
 	return c
 }

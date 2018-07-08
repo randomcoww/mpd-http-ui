@@ -9,6 +9,7 @@ import (
 	"log"
 	"encoding/json"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/handlers"
 	"net/http"
 	"flag"
 	"strconv"
@@ -30,6 +31,11 @@ type response struct {
 
 
 func main() {
+
+	allowedHeaders := handlers.AllowedHeaders([]string{"X-Requested-With"})
+	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
+	allowedMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
+
 	fmt.Printf("Start")
 	flag.Parse()
 
@@ -73,7 +79,7 @@ func main() {
 	<-esClient.Ready
 
 	fmt.Printf("API server start on %s\n", *listenUrl)
-	log.Fatal(http.ListenAndServe(*listenUrl, r))
+	log.Fatal(http.ListenAndServe(*listenUrl, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(r)))
 }
 
 
@@ -193,7 +199,13 @@ func search(w http.ResponseWriter, r *http.Request) {
 
 	if err == nil {
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(search.Hits.Hits)
+
+		var	result []*json.RawMessage
+		for _, hits := range search.Hits.Hits {
+			result = append(result, hits.Source)
+		}
+
+		json.NewEncoder(w).Encode(result)
 	} else {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		json.NewEncoder(w).Encode(response{err.Error()})
