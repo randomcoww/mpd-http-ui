@@ -13,7 +13,7 @@ import (
 type MpdClient struct {
 	Ready chan struct{}
 	Down chan struct{}
-	Conn *mpd.Client
+	conn *mpd.Client
 	proto string
 	addr string
 }
@@ -27,21 +27,27 @@ func NewMpdClient(proto, addr string) (*MpdClient) {
 		addr: addr,
 	}
 
-	c.setStatusDown()
+	c.Down <- struct{}{}
 	go c.reconnectLoop()
 
 	return c
 }
 
 
-func (c *MpdClient) setStatusReady() {
-	c.Ready <- struct{}{}
-	fmt.Printf("MPD ready\n")
-}
+func (c *MpdClient) connect() (error) {
+	fmt.Printf("Connecting to MPD...\n")
+	conn, err := mpd.Dial(c.proto, c.addr)
 
-func (c *MpdClient) setStatusDown() {
-	c.Down <- struct{}{}
-	fmt.Printf("MPD down\n")
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Connected to MPD\n")
+
+	// defer conn.Close()
+	c.conn = conn
+
+	return nil
 }
 
 
@@ -51,30 +57,24 @@ func (c *MpdClient) reconnectLoop() {
 
 		case <-c.Down:
 			for {
-				time.Sleep(1000 * time.Millisecond)
+				err := c.connect()
 
-				fmt.Printf("Connecting to MPD...\n")
-				conn, err := mpd.Dial(c.proto, c.addr)
-				defer conn.Close()
-
-				if err == nil {
-					c.Conn = conn
-
-					c.setStatusReady()
-					break
-
-				} else {
-					fmt.Printf("Error connecting to MPD\n")
+				if err != nil {
+					time.Sleep(2000 * time.Millisecond)
+					continue
 				}
+
+				c.Ready <- struct{}{}
+				break
 			}
 		}
 	}
 }
 
 
-func (c *MpdClient) GetInfo(mpdPath string) (map[string]string) {
+func (c *MpdClient) GetDatabaseItem(mpdPath string) (map[string]string) {
 	for {
-		attrs, err := c.Conn.ListInfo(mpdPath)
+		attrs, err := c.conn.ListInfo(mpdPath)
 
 		if err == nil {
 			if len(attrs) > 0 {
@@ -87,7 +87,7 @@ func (c *MpdClient) GetInfo(mpdPath string) (map[string]string) {
 			}
 
 		} else {
-			c.setStatusDown()
+			c.Down <- struct{}{}
 			fmt.Printf("Start MPD ready wait\n")
 			<-c.Ready
 		}
