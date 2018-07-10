@@ -75,8 +75,8 @@ func main() {
 	mpdClient = NewMpdClient("tcp", *mpdUrl)
 	esClient = NewEsClient(*esUrl, esIndex, esDocument)
 
-	<-mpdClient.Ready
-	<-esClient.Ready
+	<-mpdClient.up
+	<-esClient.up
 
 	fmt.Printf("API server start on %s\n", *listenUrl)
 	log.Fatal(http.ListenAndServe(*listenUrl, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(r)))
