@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"context"
 	"time"
+	"errors"
 	elastic "gopkg.in/olivere/elastic.v5"
 )
 
@@ -16,39 +17,33 @@ var (
 )
 
 type EsClient struct {
-	Ready chan struct{}
-	Down chan struct{}
+	up chan struct{}
+	down chan struct{}
+	indexDown chan struct{}
+
 	url string
 	index string
 	indexType string
 	conn *elastic.Client
 }
 
+
 // new ES client
 func NewEsClient(url, index, indexType string) (*EsClient) {
 	c := &EsClient{
-		Ready: make(chan struct{}, 1),
-		Down: make(chan struct{}, 1),
+		up: make(chan struct{}, 1),
+		down: make(chan struct{}, 1),
+		indexDown: make(chan struct{}, 1),
+
 		url: url,
 		index: index,
 		indexType: indexType,
 	}
 
-	c.setStatusDown()
+	c.down <- struct{}{}
 	go c.processLoop()
 
 	return c
-}
-
-
-func (c *EsClient) setStatusReady() {
-	c.Ready <- struct{}{}
-	fmt.Printf("Elasticsearch ready\n")
-}
-
-func (c *EsClient) setStatusDown() {
-	c.Down <- struct{}{}
-	fmt.Printf("Elasticsearch down\n")
 }
 
 
@@ -56,43 +51,73 @@ func (c *EsClient) processLoop() {
 	for {
 		select {
 
-		case <-c.Down:
+		case <-c.down:
 			for {
-				time.Sleep(1000 * time.Millisecond)
-
-				fmt.Printf("Connecting to Elasticsearch...\n")
-				conn, err := elastic.NewSimpleClient(elastic.SetURL(c.url))
-
-				if err == nil {
-					c.conn = conn
-
-					// get version
-					err = c.testVersion()
-					if err != nil {
-						fmt.Printf("Checking Elasticsearch version...\n")
-						continue
-					}
-
-					c.setStatusReady()
-					break
-
-				} else {
-					fmt.Printf("Error connecting to Elasrticsearch\n")
+				err := c.connect()
+				if err != nil {
+					time.Sleep(2000 * time.Millisecond)
+					continue
 				}
+				break
+			}
+			c.indexDown <- struct{}{}
+
+		// test getting or creating index
+		case <-c.indexDown:
+			for {
+				err := c.getIndex()
+				if err != nil {
+					time.Sleep(2000 * time.Millisecond)
+					continue
+				}
+				break
+			}
+			c.up <- struct{}{}
+
+    // ping
+		case <-time.After(1000 * time.Millisecond):
+			_, _, err := c.conn.Ping(c.url).Do(ctx)
+
+			if err != nil {
+				c.down <- struct{}{}
 			}
 		}
 	}
 }
 
 
-func (c *EsClient) testVersion() (error) {
-	// ping test
-	info, code, err := c.conn.Ping(c.url).Do(ctx)
+// get connection
+func (c *EsClient) connect() (error) {
+	fmt.Printf("Connecting to Elasticsearch...\n")
+	conn, err := elastic.NewSimpleClient(elastic.SetURL(c.url))
+
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Elasticsearch returned with code %d and version %s\n", code, info.Version.Number)
+	fmt.Printf("Connected to Elasticsearch\n")
+
+	// defer conn.Close()
+	c.conn = conn
+
+	return nil
+}
+
+
+// create index with provided mapping
+func (c *EsClient) getIndex() (error) {
+	fmt.Printf("Checking Elasticsearch index...\n")
+
+	exists, err := c.conn.IndexExists(c.index).Do(ctx)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return errors.New("Elasticsearch index not found")
+	}
+
+	fmt.Printf("Got Elasticsearch index\n")
 	return nil
 }
 
@@ -123,9 +148,8 @@ func (c *EsClient) Search(query string) (*elastic.SearchResult, error) {
 		Do(ctx)
 
 	if err != nil {
-		fmt.Printf("err %s\n", err)
 		return nil, err
 	}
 
-	return search, nil
+	return search, err
 }

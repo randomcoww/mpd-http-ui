@@ -12,13 +12,15 @@ import (
 )
 
 type MpdClient struct {
-	Ready chan struct{}
-	Down chan struct{}
-	Watch chan struct{}
-	Conn *mpd.Client
+	watch chan struct{}
+	up chan struct {}
+	down chan struct{}
+
+	conn *mpd.Client
 	proto string
 	addr string
-	Events chan string
+	eventChanges chan []string
+	events chan string
 }
 
 var (
@@ -40,15 +42,16 @@ var (
 // create new MPD client
 func NewMpdClient(proto, addr string) (*MpdClient) {
 	c := &MpdClient{
-		Ready: make(chan struct{}, 1),
-		Down: make(chan struct{}, 1),
-		Watch: make(chan struct{}, 1),
+		watch: make(chan struct{}, 1),
+		up: make(chan struct{}, 1),
+		down: make(chan struct{}, 1),
+
 		proto: proto,
 		addr: addr,
-		Events: make(chan string),
+		events: make(chan string),
 	}
 
-	c.setStatusDown()
+	c.down <- struct{}{}
 	go c.reconnectLoop()
 	go c.setupWatcher()
 
@@ -56,15 +59,32 @@ func NewMpdClient(proto, addr string) (*MpdClient) {
 }
 
 
-func (c *MpdClient) setStatusReady() {
-	c.Ready <- struct{}{}
-	c.Watch <- struct{}{}
-	fmt.Printf("MPD ready\n")
-}
+func (c *MpdClient) connect() (error) {
+	if c.conn != nil {
+		err := c.conn.Ping()
 
-func (c *MpdClient) setStatusDown() {
-	c.Down <- struct{}{}
-	fmt.Printf("MPD down\n")
+		if err != nil {
+			fmt.Printf("Reconnecting MPD...\n")
+			// c.conn.Close()
+
+		} else {
+			fmt.Printf("MPD connection still alive\n")
+			return nil
+		}
+	}
+
+	fmt.Printf("Connecting to MPD...\n")
+	conn, err := mpd.Dial(c.proto, c.addr)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Connected to MPD\n")
+	// defer conn.Close()
+	c.conn = conn
+
+	return nil
 }
 
 
@@ -72,82 +92,130 @@ func (c *MpdClient) reconnectLoop() {
 	for {
 		select {
 
-		case <-c.Down:
+		case <-c.down:
 			for {
-				time.Sleep(1000 * time.Millisecond)
-
-				fmt.Printf("Connecting to MPD...\n")
-				conn, err := mpd.Dial(c.proto, c.addr)
-				defer conn.Close()
-
-				if err == nil {
-					c.Conn = conn
-
-					c.setStatusReady()
-					break
-
-				} else {
-					fmt.Printf("Error connecting to MPD\n")
+				err := c.connect()
+				if err != nil {
+					time.Sleep(2000 * time.Millisecond)
+					continue
 				}
+				break
 			}
+			c.up <- struct{}{}
+			c.watch <- struct{}{}
 		}
 	}
 }
 
 
-// reimplement watch included in log watch
+// reimplement watch here
 func (c *MpdClient) setupWatcher() {
-	<-c.Ready
+	<-c.watch
+	fmt.Printf("Start MPD watcher\n")
 
 	for {
-		changed, err := c.Conn.
+		changed, err := c.conn.
 			Command("idle %s", mpd.Quoted(strings.Join(watchEvents, " "))).
 			Strings("changed")
 
-		if err == nil {
-			fmt.Printf("MPD event add: %s\n", changed)
+		if err != nil {
+			time.Sleep(2000 * time.Millisecond)
 
+			c.down <- struct{}{}
+			<-c.watch
+
+			continue
+		}
+
+		if len(changed) > 0 {
 			for _, e := range changed {
-				c.Events <-e
+				fmt.Printf("MPD sent event: %s\n", e)
+				c.events <-e
 			}
-
-		} else {
-			c.setStatusDown()
-			fmt.Printf("Start MPD ready wait\n")
-			<-c.Watch
 		}
 	}
+}
+
+func (c *MpdClient) eventReader() {
+	for {
+		select {
+		case e := <-c.events:
+			fmt.Printf("MPD got event: %s\n", e)
+		}
+	}
+}
+
+
+func (c *MpdClient) HandlerReconnect() {
+	c.down <- struct{}{}
+	<-c.up
 }
 
 // manipulate playlist
 
 // query current playlist items between position start and end
-func  (c *MpdClient) QueryPlaylistItems(start, end int) ([]mpd.Attrs, error) {
-	attrs, err := c.Conn.PlaylistInfo(start, end)
-	return attrs, err
+func (c *MpdClient) QueryPlaylistItems(start, end int) ([]mpd.Attrs, error) {
+	attrs, err := c.conn.PlaylistInfo(start, end)
+
+	if err != nil {
+		c.HandlerReconnect()
+		attrs, err = c.conn.PlaylistInfo(start, end)
+	}
+
+	if err != nil {
+		fmt.Printf("MPD error getting playlist: %s\n", err)
+		return nil, err
+	}
+
+	fmt.Printf("MPD got playlist: %s\n", attrs)
+	return attrs, nil
 }
 
 // add database item to current playlist
 func (c *MpdClient) AddToPlaylist(mpdPath string) (error) {
-	err := c.Conn.Add(mpdPath)
+	err := c.conn.Add(mpdPath)
+
+	if err != nil {
+		c.HandlerReconnect()
+		err = c.conn.Add(mpdPath)
+	}
+
 	return err
 }
 
 // moves songs in current playlist between positions start and end to new position position
 func (c *MpdClient) MovePlaylistItems(start, end, newPosition int) (error) {
-	err := c.Conn.Move(start, end, newPosition)
+	err := c.conn.Move(start, end, newPosition)
+
+	if err != nil {
+		c.HandlerReconnect()
+		err = c.conn.Move(start, end, newPosition)
+	}
+
 	return err
 }
 
 // deletes playlist items between positions start and end
 func (c *MpdClient) DeletePlaylistItems(start, end int) (error) {
-	err := c.Conn.Delete(start, end)
+	err := c.conn.Delete(start, end)
+
+	if err != nil {
+		c.HandlerReconnect()
+		err = c.conn.Delete(start, end)
+	}
+
 	return err
 }
 
 // clear current playlist
 func (c *MpdClient) ClearPlaylist() (error) {
-	err := c.Conn.Clear()
+	err := c.conn.Clear()
+
+	if err != nil {
+		c.HandlerReconnect()
+		err = c.conn.Clear()
+	}
+
 	return err
 }
 
@@ -155,18 +223,36 @@ func (c *MpdClient) ClearPlaylist() (error) {
 
 // start playing
 func (c *MpdClient) PlayItem(position int) (error) {
-	err := c.Conn.Play(position)
+	err := c.conn.Play(position)
+
+	if err != nil {
+		c.HandlerReconnect()
+		err = c.conn.Play(position)
+	}
+
 	return err
 }
 
 // stop playing
 func (c *MpdClient) Stop() (error) {
-	err := c.Conn.Stop()
+	err := c.conn.Stop()
+
+	if err != nil {
+		c.HandlerReconnect()
+		err = c.conn.Stop()
+	}
+
 	return err
 }
 
 // pause playing
 func (c *MpdClient) Pause() (error) {
-	err := c.Conn.Pause(true)
+	err := c.conn.Pause(true)
+
+	if err != nil {
+		c.HandlerReconnect()
+		err = c.conn.Pause(true)
+	}
+
 	return err
 }

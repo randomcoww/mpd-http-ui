@@ -79,15 +79,15 @@ func NewDataFeeder(logFile, mpdUrl, esUrl string) (error) {
 	mpdClient := NewMpdClient("tcp", mpdUrl)
 	esClient := NewEsClient(esUrl, esIndex, esDocument, esMapping)
 
-	<-mpdClient.Ready
-	<-esClient.Ready
+	<-mpdClient.up
+	<-esClient.up
 
 	for {
 		select {
 		case c := <- logParser.added:
 			fmt.Printf("Add item event: %s\n", c)
 
-			attr := mpdClient.GetInfo(c)
+			attr := mpdClient.GetDatabaseItem(c)
 			addIndex := Song{
 				File: c,
 				Date: attr["date"],
@@ -99,11 +99,11 @@ func NewDataFeeder(logFile, mpdUrl, esUrl string) (error) {
 				Artist: attr["artist"],
 				Genre: attr["genre"],
 			}
-			esClient.Index(addIndex)
+			esClient.IndexBulk(addIndex)
 
 		case c := <- logParser.deleted:
 			fmt.Printf("Delete item event: %s\n", c)
-			esClient.Delete(c)
+			esClient.DeleteBluk(c)
 
 		case <- time.After(1000 * time.Millisecond):
 		}

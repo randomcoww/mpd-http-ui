@@ -11,9 +11,10 @@ import (
 )
 
 type MpdClient struct {
-	Ready chan struct{}
-	Down chan struct{}
-	Conn *mpd.Client
+	up chan struct {}
+	down chan struct{}
+
+	conn *mpd.Client
 	proto string
 	addr string
 }
@@ -21,27 +22,46 @@ type MpdClient struct {
 // create new MPD client
 func NewMpdClient(proto, addr string) (*MpdClient) {
 	c := &MpdClient{
-		Ready: make(chan struct{}, 1),
-		Down: make(chan struct{}, 1),
+		up: make(chan struct{}, 1),
+		down: make(chan struct{}, 1),
+
 		proto: proto,
 		addr: addr,
 	}
 
-	c.setStatusDown()
+	c.down <- struct{}{}
 	go c.reconnectLoop()
 
 	return c
 }
 
 
-func (c *MpdClient) setStatusReady() {
-	c.Ready <- struct{}{}
-	fmt.Printf("MPD ready\n")
-}
+func (c *MpdClient) connect() (error) {
+	if c.conn != nil {
+		err := c.conn.Ping()
 
-func (c *MpdClient) setStatusDown() {
-	c.Down <- struct{}{}
-	fmt.Printf("MPD down\n")
+		if err != nil {
+			fmt.Printf("Reconnecting MPD...\n")
+			// c.conn.Close()
+
+		} else {
+			fmt.Printf("MPD connection still alive\n")
+			return nil
+		}
+	}
+
+	fmt.Printf("Connecting to MPD...\n")
+	conn, err := mpd.Dial(c.proto, c.addr)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Connected to MPD\n")
+	// defer conn.Close()
+	c.conn = conn
+
+	return nil
 }
 
 
@@ -49,47 +69,40 @@ func (c *MpdClient) reconnectLoop() {
 	for {
 		select {
 
-		case <-c.Down:
+		case <-c.down:
 			for {
-				time.Sleep(1000 * time.Millisecond)
-
-				fmt.Printf("Connecting to MPD...\n")
-				conn, err := mpd.Dial(c.proto, c.addr)
-				defer conn.Close()
-
-				if err == nil {
-					c.Conn = conn
-
-					c.setStatusReady()
-					break
-
-				} else {
-					fmt.Printf("Error connecting to MPD\n")
+				err := c.connect()
+				if err != nil {
+					time.Sleep(2000 * time.Millisecond)
+					continue
 				}
+				break
 			}
+			c.up <- struct{}{}
 		}
 	}
 }
 
 
-func (c *MpdClient) GetInfo(mpdPath string) (map[string]string) {
+func (c *MpdClient) GetDatabaseItem(mpdPath string) (map[string]string) {
 	for {
-		attrs, err := c.Conn.ListInfo(mpdPath)
+		attrs, err := c.conn.ListInfo(mpdPath)
 
-		if err == nil {
-			if len(attrs) > 0 {
-				fmt.Printf("Got MPD attrs (%d) %s\n", len(attrs), attrs[0])
-				return attrs[0]
+		if err != nil {
+			time.Sleep(2000 * time.Millisecond)
 
-			} else {
-				fmt.Printf("Got MPD empty attrs\n")
-				return make(map[string]string)
-			}
+			c.down <- struct{}{}
+			<-c.up
+
+			continue
+		}
+
+		if len(attrs) > 0 {
+			fmt.Printf("Got MPD attrs (%d) %s\n", len(attrs), attrs[0])
+			return attrs[0]
 
 		} else {
-			c.setStatusDown()
-			fmt.Printf("Start MPD ready wait\n")
-			<-c.Ready
+			return make(map[string]string)
 		}
 	}
 }
