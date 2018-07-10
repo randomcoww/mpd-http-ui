@@ -41,7 +41,7 @@ func (c *MpdClient) connect() (error) {
 		err := c.conn.Ping()
 
 		if err != nil {
-			fmt.Printf("Reconnecting MPD\n")
+			fmt.Printf("Reconnecting MPD...\n")
 			// c.conn.Close()
 
 		} else {

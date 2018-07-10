@@ -64,7 +64,7 @@ func (c *MpdClient) connect() (error) {
 		err := c.conn.Ping()
 
 		if err != nil {
-			fmt.Printf("Reconnecting MPD\n")
+			fmt.Printf("Reconnecting MPD...\n")
 			// c.conn.Close()
 
 		} else {
@@ -176,8 +176,8 @@ func (c *MpdClient) AddToPlaylist(mpdPath string) (error) {
 	err := c.conn.Add(mpdPath)
 
 	if err != nil {
-		err = c.conn.Add(mpdPath)
 		c.HandlerReconnect()
+		err = c.conn.Add(mpdPath)
 	}
 
 	return err
@@ -188,8 +188,8 @@ func (c *MpdClient) MovePlaylistItems(start, end, newPosition int) (error) {
 	err := c.conn.Move(start, end, newPosition)
 
 	if err != nil {
-		err = c.conn.Move(start, end, newPosition)
 		c.HandlerReconnect()
+		err = c.conn.Move(start, end, newPosition)
 	}
 
 	return err
@@ -200,8 +200,8 @@ func (c *MpdClient) DeletePlaylistItems(start, end int) (error) {
 	err := c.conn.Delete(start, end)
 
 	if err != nil {
-		err = c.conn.Delete(start, end)
 		c.HandlerReconnect()
+		err = c.conn.Delete(start, end)
 	}
 
 	return err
@@ -212,8 +212,8 @@ func (c *MpdClient) ClearPlaylist() (error) {
 	err := c.conn.Clear()
 
 	if err != nil {
-		err = c.conn.Clear()
 		c.HandlerReconnect()
+		err = c.conn.Clear()
 	}
 
 	return err
@@ -226,8 +226,8 @@ func (c *MpdClient) PlayItem(position int) (error) {
 	err := c.conn.Play(position)
 
 	if err != nil {
-		err = c.conn.Play(position)
 		c.HandlerReconnect()
+		err = c.conn.Play(position)
 	}
 
 	return err
@@ -238,8 +238,8 @@ func (c *MpdClient) Stop() (error) {
 	err := c.conn.Stop()
 
 	if err != nil {
-		err = c.conn.Stop()
 		c.HandlerReconnect()
+		err = c.conn.Stop()
 	}
 
 	return err
@@ -250,8 +250,8 @@ func (c *MpdClient) Pause() (error) {
 	err := c.conn.Pause(true)
 
 	if err != nil {
-		err = c.conn.Pause(true)
 		c.HandlerReconnect()
+		err = c.conn.Pause(true)
 	}
 
 	return err
