@@ -11,8 +11,9 @@ import (
 )
 
 type MpdClient struct {
-	Ready chan struct{}
-	Down chan struct{}
+	up chan struct {}
+	down chan struct{}
+
 	conn *mpd.Client
 	proto string
 	addr string
@@ -21,13 +22,14 @@ type MpdClient struct {
 // create new MPD client
 func NewMpdClient(proto, addr string) (*MpdClient) {
 	c := &MpdClient{
-		Ready: make(chan struct{}, 1),
-		Down: make(chan struct{}, 1),
+		up: make(chan struct{}, 1),
+		down: make(chan struct{}, 1),
+
 		proto: proto,
 		addr: addr,
 	}
 
-	c.Down <- struct{}{}
+	c.down <- struct{}{}
 	go c.reconnectLoop()
 
 	return c
@@ -35,6 +37,19 @@ func NewMpdClient(proto, addr string) (*MpdClient) {
 
 
 func (c *MpdClient) connect() (error) {
+	if c.conn != nil {
+		err := c.conn.Ping()
+
+		if err != nil {
+			fmt.Printf("Ping MPD failed\n")
+			// c.conn.Close()
+
+		} else {
+			fmt.Printf("Ping MPD\n")
+			return nil
+		}
+	}
+
 	fmt.Printf("Connecting to MPD...\n")
 	conn, err := mpd.Dial(c.proto, c.addr)
 
@@ -43,7 +58,6 @@ func (c *MpdClient) connect() (error) {
 	}
 
 	fmt.Printf("Connected to MPD\n")
-
 	// defer conn.Close()
 	c.conn = conn
 
@@ -55,7 +69,7 @@ func (c *MpdClient) reconnectLoop() {
 	for {
 		select {
 
-		case <-c.Down:
+		case <-c.down:
 			for {
 				err := c.connect()
 
@@ -64,7 +78,7 @@ func (c *MpdClient) reconnectLoop() {
 					continue
 				}
 
-				c.Ready <- struct{}{}
+				c.up <- struct{}{}
 				break
 			}
 		}
@@ -76,20 +90,21 @@ func (c *MpdClient) GetDatabaseItem(mpdPath string) (map[string]string) {
 	for {
 		attrs, err := c.conn.ListInfo(mpdPath)
 
-		if err == nil {
-			if len(attrs) > 0 {
-				fmt.Printf("Got MPD attrs (%d) %s\n", len(attrs), attrs[0])
-				return attrs[0]
+		if err != nil {
+			time.Sleep(2000 * time.Millisecond)
 
-			} else {
-				fmt.Printf("Got MPD empty attrs\n")
-				return make(map[string]string)
-			}
+			c.down <- struct{}{}
+			<-c.up
+
+			continue
+		}
+
+		if len(attrs) > 0 {
+			fmt.Printf("Got MPD attrs (%d) %s\n", len(attrs), attrs[0])
+			return attrs[0]
 
 		} else {
-			c.Down <- struct{}{}
-			fmt.Printf("Start MPD ready wait\n")
-			<-c.Ready
+			return make(map[string]string)
 		}
 	}
 }

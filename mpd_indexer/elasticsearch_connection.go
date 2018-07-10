@@ -16,9 +16,10 @@ var (
 )
 
 type EsClient struct {
-	Ready chan struct{}
-	Down chan struct{}
-	GetIndex chan struct{}
+	up chan struct{}
+	down chan struct{}
+	indexDown chan struct{}
+
 	url string
 	index string
 	indexType string
@@ -27,19 +28,21 @@ type EsClient struct {
 	bulk *elastic.BulkService
 }
 
+
 // new ES client
 func NewEsClient(url, index, indexType, mapping string) (*EsClient) {
 	c := &EsClient{
-		Ready: make(chan struct{}, 1),
-		Down: make(chan struct{}, 1),
-		GetIndex: make(chan struct{}, 1),
+		up: make(chan struct{}, 1),
+		down: make(chan struct{}, 1),
+		indexDown: make(chan struct{}, 1),
+
 		url: url,
 		index: index,
 		indexType: indexType,
 		mapping: mapping,
 	}
 
-	c.Down <- struct{}{}
+	c.down <- struct{}{}
 	go c.processLoop()
 
 	return c
@@ -50,26 +53,26 @@ func (c *EsClient) processLoop() {
 	for {
 		select {
 
-		case <-c.Down:
+		case <-c.down:
 			for {
 				err := c.connect()
 				if err != nil {
 					time.Sleep(2000 * time.Millisecond)
 					continue
 				}
-				c.GetIndex <- struct{}{}
+				c.indexDown <- struct{}{}
 				break
 			}
 
 		// test getting or creating index
-		case <-c.GetIndex:
+		case <-c.indexDown:
 			for {
-				err := c.getIndex()
+				err := c.getOrCreateIndex()
 				if err != nil {
 					time.Sleep(2000 * time.Millisecond)
 					continue
 				}
-				c.Ready <- struct{}{}
+				c.up <- struct{}{}
 				break
 			}
 
@@ -77,18 +80,22 @@ func (c *EsClient) processLoop() {
 			err := c.processBulk()
 
 			if err != nil {
-				c.Down <- struct{}{}
+				c.down <- struct{}{}
 			}
 		}
 	}
 }
 
+
 // run bulk processing job
 func (c *EsClient) processBulk() (error) {
 	if c.bulk.NumberOfActions() > 0 {
 		_, err := c.bulk.Do(ctx)
+
 		if err != nil {
+			fmt.Printf("Error processsing Elasticsearch bulk\n")
 			return err
+
 		} else {
 			fmt.Printf("Processsed Elasticsearch bulk\n")
 		}
@@ -96,8 +103,19 @@ func (c *EsClient) processBulk() (error) {
 	return nil
 }
 
+
 // get connection
 func (c *EsClient) connect() (error) {
+	if c.conn != nil {
+		_, _, err := c.conn.Ping(c.url).Do(ctx)
+
+		if err != nil {
+      //
+		} else {
+			return nil
+		}
+	}
+
 	fmt.Printf("Connecting to Elasticsearch...\n")
 	conn, err := elastic.NewSimpleClient(elastic.SetURL(c.url))
 
@@ -106,7 +124,6 @@ func (c *EsClient) connect() (error) {
 	}
 
 	fmt.Printf("Connected to Elasticsearch\n")
-
 	// defer conn.Close()
 	c.conn = conn
 	c.bulk = conn.Bulk()
@@ -114,8 +131,9 @@ func (c *EsClient) connect() (error) {
 	return nil
 }
 
+
 // create index with provided mapping
-func (c *EsClient) getIndex() (error) {
+func (c *EsClient) getOrCreateIndex() (error) {
 	fmt.Printf("Checking Elasticsearch index...\n")
 
 	exists, err := c.conn.IndexExists(c.index).Do(ctx)
@@ -137,6 +155,7 @@ func (c *EsClient) getIndex() (error) {
 	fmt.Printf("Got Elasticsearch index\n")
 	return nil
 }
+
 
 // Add index to next bulk update
 func (c *EsClient) IndexBulk(s Song) {
