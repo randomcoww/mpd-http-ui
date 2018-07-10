@@ -41,11 +41,11 @@ func (c *MpdClient) connect() (error) {
 		err := c.conn.Ping()
 
 		if err != nil {
-			fmt.Printf("Ping MPD failed\n")
+			fmt.Printf("Reconnecting MPD\n")
 			// c.conn.Close()
 
 		} else {
-			fmt.Printf("Ping MPD\n")
+			fmt.Printf("MPD connection still alive\n")
 			return nil
 		}
 	}
@@ -72,15 +72,13 @@ func (c *MpdClient) reconnectLoop() {
 		case <-c.down:
 			for {
 				err := c.connect()
-
 				if err != nil {
 					time.Sleep(2000 * time.Millisecond)
 					continue
 				}
-
-				c.up <- struct{}{}
 				break
 			}
+			c.up <- struct{}{}
 		}
 	}
 }

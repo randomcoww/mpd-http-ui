@@ -60,9 +60,9 @@ func (c *EsClient) processLoop() {
 					time.Sleep(2000 * time.Millisecond)
 					continue
 				}
-				c.indexDown <- struct{}{}
 				break
 			}
+			c.indexDown <- struct{}{}
 
 		// test getting or creating index
 		case <-c.indexDown:
@@ -72,9 +72,9 @@ func (c *EsClient) processLoop() {
 					time.Sleep(2000 * time.Millisecond)
 					continue
 				}
-				c.up <- struct{}{}
 				break
 			}
+			c.up <- struct{}{}
 
 		case <-time.After(1000 * time.Millisecond):
 			err := c.processBulk()

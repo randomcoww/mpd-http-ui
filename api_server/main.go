@@ -78,8 +78,11 @@ func main() {
 	<-mpdClient.up
 	<-esClient.up
 
+	// go mpdClient.eventReader()
+
 	fmt.Printf("API server start on %s\n", *listenUrl)
 	log.Fatal(http.ListenAndServe(*listenUrl, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(r)))
+
 }
 
 

@@ -15,7 +15,6 @@ services:
     image: elasticsearch:5-alpine
     ports:
     - "9200:9200"
-    - "9300:9300"
     restart: on-failure
   mpd_indexer:
     build:
