@@ -11,7 +11,7 @@ import (
 )
 
 type MpdClient struct {
-	up chan struct {}
+	Up chan struct {}
 	down chan struct{}
 	pingDown chan struct{}
 
@@ -24,7 +24,7 @@ type MpdClient struct {
 // create new MPD client
 func NewMpdClient(proto, addr string) (*MpdClient) {
 	c := &MpdClient{
-		up: make(chan struct{}, 1),
+		Up: make(chan struct{}, 1),
 		down: make(chan struct{}, 1),
 		pingDown: make(chan struct{}, 1),
 
@@ -55,6 +55,7 @@ func (c *MpdClient) drainState(ch chan struct{}) {
 		}
 	}
 }
+
 
 
 func (c *MpdClient) connect() (error) {
@@ -97,7 +98,7 @@ func (c *MpdClient) reconnectLoop() {
 				}
 				break
 			}
-			c.setState(c.up)
+			c.setState(c.Up)
 
 		case <-time.After(10000 * time.Millisecond):
 			err := c.conn.Ping()
@@ -121,9 +122,9 @@ func (c *MpdClient) GetDatabaseItem(mpdPath string) (map[string]string) {
 		attrs, err := c.conn.ListInfo(mpdPath)
 
 		if err != nil {
-			c.drainState(c.up)
+			c.drainState(c.Up)
 			c.setState(c.down)
-			<-c.up
+			<-c.Up
 			continue
 		}
 
