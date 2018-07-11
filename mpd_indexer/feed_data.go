@@ -8,19 +8,20 @@ import (
 	"fmt"
 	"time"
 	mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
+	es_handler "github.com/randomcoww/go-mpd-es/es_handler"
 )
 
 // elasticsearch stuff
 type Song struct {
-	File         string `json:"file"`
-	Date         string `json:"date,omitempty"`
-	Duration     string `json:"duration,omitempty"`
-	Composer     string `json:"composer,omitempty"`
-	Album        string `json:"album,omitempty"`
-	Track        string `json:"track,omitempty"`
-	Title        string `json:"title,omitempty"`
-	Artist       string `json:"artist,omitempty"`
-	Genre        string `json:"genre,omitempty"`
+	File     string `json:"file"`
+	Date     string `json:"date,omitempty"`
+	Duration string `json:"duration,omitempty"`
+	Composer string `json:"composer,omitempty"`
+	Album    string `json:"album,omitempty"`
+	Track    string `json:"track,omitempty"`
+	Title    string `json:"title,omitempty"`
+	Artist   string `json:"artist,omitempty"`
+	Genre    string `json:"genre,omitempty"`
 }
 
 const esMapping = `
@@ -78,10 +79,10 @@ func NewDataFeeder(logFile, mpdUrl, esUrl string) (error) {
 	}
 
 	mpdClient := mpd_handler.NewMpdClient("tcp", mpdUrl)
-	esClient := NewEsClient(esUrl, esIndex, esDocument, esMapping)
+	esClient := es_handler.NewEsClient(esUrl, esIndex, esDocument, esMapping)
 
 	<-mpdClient.Up
-	<-esClient.up
+	<-esClient.Up
 
 	for {
 		select {
@@ -100,7 +101,7 @@ func NewDataFeeder(logFile, mpdUrl, esUrl string) (error) {
 				Artist: attr["artist"],
 				Genre: attr["genre"],
 			}
-			esClient.IndexBulk(addIndex)
+			esClient.IndexBulk(c, addIndex)
 
 		case c := <- logParser.deleted:
 			fmt.Printf("Delete item event: %s\n", c)

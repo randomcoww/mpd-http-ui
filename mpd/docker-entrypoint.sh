@@ -14,8 +14,8 @@ touch \
 
 chown -R mpd \
   /mpd/cache \
-  /mpd/playlists \
-  $LOGPATH
+  /mpd/playlists
+  # $LOGPATH
 
 ## start
 exec mpd \
