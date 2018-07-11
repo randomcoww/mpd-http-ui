@@ -7,6 +7,7 @@ package main
 import (
 	"fmt"
 	"time"
+	mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
 )
 
 // elasticsearch stuff
@@ -76,10 +77,10 @@ func NewDataFeeder(logFile, mpdUrl, esUrl string) (error) {
 		return err
 	}
 
-	mpdClient := NewMpdClient("tcp", mpdUrl)
+	mpdClient := mpd_handler.NewMpdClient("tcp", mpdUrl)
 	esClient := NewEsClient(esUrl, esIndex, esDocument, esMapping)
 
-	<-mpdClient.up
+	<-mpdClient.Up
 	<-esClient.up
 
 	for {

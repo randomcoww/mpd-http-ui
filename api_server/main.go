@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"flag"
 	"strconv"
+	mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
 )
 
 var (
@@ -20,7 +21,7 @@ var (
 	mpdUrl = flag.String("mpdurl", "localhost:6600", "MPD URL")
 	esUrl = flag.String("esurl", "http://localhost:9200", "Elasticsearch URL")
 	esIndex, esDocument = "songs", "song"
-	mpdClient *MpdClient
+	mpdClient *mpd_handler.MpdClient
 	esClient *EsClient
 )
 
@@ -72,10 +73,10 @@ func main() {
 		Methods("DELETE")
 
 
-	mpdClient = NewMpdClient("tcp", *mpdUrl)
+	mpdClient = mpd_handler.NewMpdClient("tcp", *mpdUrl)
 	esClient = NewEsClient(*esUrl, esIndex, esDocument)
 
-	<-mpdClient.up
+	<-mpdClient.Up
 	<-esClient.up
 
 	// go mpdClient.eventReader()
