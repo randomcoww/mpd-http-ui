@@ -11,6 +11,7 @@ import { PlaylistComponent } from './playlist/playlist.component';
 
 import { AppRoutingModule } from './app-routing.module';
 import { MessagesComponent } from './messages/messages.component';
+import { DatabaseSearchComponent } from './database-search/database-search.component';
 
 @NgModule({
   imports: [
@@ -22,7 +23,8 @@ import { MessagesComponent } from './messages/messages.component';
   declarations: [
     AppComponent,
     PlaylistComponent,
-    MessagesComponent
+    MessagesComponent,
+    DatabaseSearchComponent
   ],
   providers: [],
   bootstrap: [AppComponent]

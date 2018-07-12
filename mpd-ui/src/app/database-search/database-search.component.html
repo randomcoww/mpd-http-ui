@@ -1,0 +1,10 @@
+<h3>database-search</h3>
+<div id="search-component">
+  <input #searchBox id="search-box" (keyup)="search(searchBox.value)" />
+
+  <ul class="search-result">
+    <li *ngFor="let databaseItem of databaseItems$ | async" >
+      <span class="badge">{{databaseItem.title}}</span>
+    </li>
+  </ul>
+</div>
