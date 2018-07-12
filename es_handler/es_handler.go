@@ -109,7 +109,7 @@ func (c *EsClient) processLoop() {
 				c.setState(c.down)
 
 			} else {
-				fmt.Printf("ES ping\n")
+				// fmt.Printf("ES ping\n")
 			}
 		}
 	}
