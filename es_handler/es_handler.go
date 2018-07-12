@@ -109,7 +109,7 @@ func (c *EsClient) processLoop() {
 				c.setState(c.down)
 
 			} else {
-				fmt.Printf("ES ping\n")
+				// fmt.Printf("ES ping\n")
 			}
 		}
 	}
@@ -127,8 +127,8 @@ func (c *EsClient) processBulk() {
 				for {
 					time.Sleep(2000 * time.Millisecond)
 
-          // bulk process seems to lose data on failure
-	        // make sure index is accessible before trying bulk write
+					// bulk process seems to lose data on failure
+					// make sure index is accessible before trying bulk write
 					exists, err := c.conn.IndexExists(c.index).Do(ctx)
 					if err != nil {
 						fmt.Printf("ES index test - %s\n", err)

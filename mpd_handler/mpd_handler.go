@@ -108,7 +108,7 @@ func (c *MpdClient) reconnectLoop() {
 				c.setState(c.down)
 
 			} else {
-				fmt.Printf("MPD ping\n")
+				// fmt.Printf("MPD ping\n")
 			}
 		}
 	}
