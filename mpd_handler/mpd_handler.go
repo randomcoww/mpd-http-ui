@@ -7,7 +7,9 @@ package mpd_handler
 import (
 	"fmt"
 	"time"
+	"errors"
 	mpd "github.com/fhs/gompd/mpd"
+	// mpd "local/gompd/mpd"
 )
 
 type MpdClient struct {
@@ -192,4 +194,50 @@ func (c *MpdClient) Stop() (error) {
 func (c *MpdClient) Pause() (error) {
 	err := c.conn.Pause(true)
 	return err
+}
+
+func (c *MpdClient) Status() (mpd.Attrs, error) {
+	attrs, err := c.conn.Status()
+	return attrs, err
+}
+
+// implement plchanges in same way as playlistinfo
+func (c *MpdClient) PlChanges(version, start, end int) ([]mpd.Attrs, error) {
+	var cmd *mpd.Command
+	switch {
+	case start < 0 && end < 0:
+		// Request all playlist items.
+		cmd = c.conn.Command("plchanges %d", version)
+	case start >= 0 && end >= 0:
+		// Request this range of playlist items.
+		cmd = c.conn.Command("plchanges %d %d:%d", version, start, end)
+	case start >= 0 && end < 0:
+		// Request the single playlist item at this position.
+		cmd = c.conn.Command("plchanges %d %d", version, start)
+	case start < 0 && end >= 0:
+		return nil, errors.New("negative start index")
+	default:
+		panic("unreachable")
+	}
+	return cmd.AttrsList("file")
+}
+
+func (c *MpdClient) PlChangePosId(version, start, end int) ([]mpd.Attrs, error) {
+	var cmd *mpd.Command
+	switch {
+	case start < 0 && end < 0:
+		// Request all playlist items.
+		cmd = c.conn.Command("plchangesposid %d", version)
+	case start >= 0 && end >= 0:
+		// Request this range of playlist items.
+		cmd = c.conn.Command("plchangesposid %d %d:%d", version, start, end)
+	case start >= 0 && end < 0:
+		// Request the single playlist item at this position.
+		cmd = c.conn.Command("plchangesposid %d %d", version, start)
+	case start < 0 && end >= 0:
+		return nil, errors.New("negative start index")
+	default:
+		panic("unreachable")
+	}
+	return cmd.AttrsList("cpos")
 }
