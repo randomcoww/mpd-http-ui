@@ -10,9 +10,6 @@ import (
 
 type MpdEvent struct {
 	up chan struct {}
-	pingDown chan struct {}
-	noidle chan struct {}
-	idle chan struct {}
 	down chan struct{}
 	conn *mpd.Client
 	proto string
@@ -27,9 +24,6 @@ type MpdEvent struct {
 func NewEventWatcher(proto, addr string) (*MpdEvent) {
 	c := &MpdEvent{
 		up: make(chan struct{}, 1),
-		pingDown: make(chan struct{}, 1),
-		noidle: make(chan struct{}, 1),
-		idle: make(chan struct{}, 1),
 		down: make(chan struct{}, 1),
 
 		proto: proto,
@@ -93,20 +87,9 @@ func (c *MpdEvent) reconnectLoop() {
 				}
 				break
 			}
-			c.setState(c.pingDown)
+			c.setState(c.up)
 
-		case <-c.pingDown:
-			for {
-				err := c.conn.Ping()
-				if err != nil {
-					time.Sleep(100 * time.Millisecond)
-					continue
-				}
-				break
-			}
-			c.setState(c.noidle)
-
-		case <-c.noidle:
+		case <-c.up:
 			changed, err := c.conn.Command("idle").Strings("changed")
 
 			if err != nil {
@@ -114,7 +97,7 @@ func (c *MpdEvent) reconnectLoop() {
 				c.setState(c.down)
 
 			} else {
-				c.setState(c.noidle)
+				c.setState(c.up)
 				for _, e := range changed {
 					c.Event <- e
 				}
