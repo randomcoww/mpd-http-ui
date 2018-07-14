@@ -9,6 +9,9 @@ import (
 	"net/http"
 	"strconv"
 	mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
+	mpd_event "github.com/randomcoww/go-mpd-es/mpd_event"
+	// mpd_handler "local/mpd_handler"
+	// mpd_event "local/mpd_event"
 	es_handler "github.com/randomcoww/go-mpd-es/es_handler"
 )
 
@@ -16,6 +19,7 @@ var (
 	esIndex, esDocument = "songs", "song"
 	mpdClient *mpd_handler.MpdClient
 	esClient *es_handler.EsClient
+	mpdEvent *mpd_event.MpdEvent
 )
 
 type response struct {
@@ -63,11 +67,24 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 	mpdClient = mpd_handler.NewMpdClient("tcp", mpdUrl)
 	esClient = es_handler.NewEsClient(esUrl, esIndex, esDocument, "")
 
-	<-mpdClient.Up
-	<-esClient.Up
+	<-mpdClient.Ready
+	<-esClient.Ready
+
+	mpdEvent = mpd_event.NewEventWatcher("tcp", mpdUrl)
+	go eventReader()
 
 	fmt.Printf("API server start on %s\n", listenUrl)
 	log.Fatal(http.ListenAndServe(listenUrl, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(r)))
+}
+
+
+func eventReader() {
+	for {
+		select {
+		case e := <-mpdEvent.Event:
+			fmt.Printf("MPD event %s\n", e)
+		}
+	}
 }
 
 
@@ -186,7 +203,7 @@ func search(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	fmt.Printf("Search database %s\n", params)
 
-	search, err := esClient.Search(params["query"])
+	search, err := esClient.Search(params["query"], 100)
 	w.Header().Set("Content-Type", "application/json")
 
 	if err == nil {
