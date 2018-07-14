@@ -84,6 +84,8 @@ func (c *MpdClient) drainState(ch chan struct{}) {
 
 
 func (c *MpdClient) SetupWatcher() {
+	c.Event <- "start"
+
 	for {
 		changed, err := c.conn.
 			Command("idle %s", mpd.Quoted(strings.Join(watchEvents, " "))).
