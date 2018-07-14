@@ -7,29 +7,55 @@ package mpd_handler
 import (
 	"fmt"
 	"time"
+	"strings"
 	mpd "github.com/fhs/gompd/mpd"
 )
 
 type MpdClient struct {
-	Up chan struct {}
+	up chan struct {}
+	watch chan struct {}
 	down chan struct{}
 	pingDown chan struct{}
-
 	conn *mpd.Client
 	proto string
 	addr string
+
+	Ready chan struct{}
+	Event chan string
 }
+
+
+var (
+	watchEvents = []string{
+		"database",
+		"update",
+		"stored_playlist",
+		"playlist",
+		"mixer",
+		"output",
+		"options",
+		// "partition",
+		"sticker",
+		"subscription",
+		"message",
+	}
+)
 
 
 // create new MPD client
 func NewMpdClient(proto, addr string) (*MpdClient) {
 	c := &MpdClient{
-		Up: make(chan struct{}, 1),
+		up: make(chan struct{}, 1),
+		watch: make(chan struct{}, 1),
 		down: make(chan struct{}, 1),
 		pingDown: make(chan struct{}, 1),
 
 		proto: proto,
 		addr: addr,
+
+		// for external use
+		Ready: make(chan struct{}, 1),
+		Event: make(chan string),
 	}
 
 	c.setState(c.down)
@@ -56,6 +82,26 @@ func (c *MpdClient) drainState(ch chan struct{}) {
 	}
 }
 
+
+func (c *MpdClient) SetupWatcher() {
+	for {
+		changed, err := c.conn.
+			Command("idle %s", mpd.Quoted(strings.Join(watchEvents, " "))).
+			Strings("changed")
+
+		if err != nil {
+			c.drainState(c.watch)
+			c.setState(c.down)
+			<-c.watch
+			continue
+		}
+
+		fmt.Printf("MPD event add: %s\n", changed)
+		for _, e := range changed {
+			c.Event <-e
+		}
+	}
+}
 
 
 func (c *MpdClient) connect() (error) {
@@ -98,7 +144,9 @@ func (c *MpdClient) reconnectLoop() {
 				}
 				break
 			}
-			c.setState(c.Up)
+			c.setState(c.up)
+			c.setState(c.watch)
+			c.setState(c.Ready)
 
 		case <-time.After(10000 * time.Millisecond):
 			err := c.conn.Ping()
@@ -122,9 +170,9 @@ func (c *MpdClient) GetDatabaseItem(mpdPath string) (map[string]string) {
 		attrs, err := c.conn.ListInfo(mpdPath)
 
 		if err != nil {
-			c.drainState(c.Up)
+			c.drainState(c.up)
 			c.setState(c.down)
-			<-c.Up
+			<-c.up
 			continue
 		}
 
