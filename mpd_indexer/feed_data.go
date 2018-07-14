@@ -81,8 +81,8 @@ func NewDataFeeder(logFile, mpdUrl, esUrl string) (error) {
 	mpdClient := mpd_handler.NewMpdClient("tcp", mpdUrl)
 	esClient := es_handler.NewEsClient(esUrl, esIndex, esDocument, esMapping)
 
-	<-mpdClient.Up
-	<-esClient.Up
+	<-mpdClient.Ready
+	<-esClient.Ready
 
 	for {
 		select {
