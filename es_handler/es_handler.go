@@ -18,7 +18,7 @@ var (
 
 
 type EsClient struct {
-	Up chan struct{}
+	up chan struct{}
 	down chan struct{}
 	indexDown chan struct{}
 	bulkRequest chan struct{}
@@ -30,13 +30,15 @@ type EsClient struct {
 
 	conn *elastic.Client
 	bulk *elastic.BulkService
+
+	Ready chan struct{}
 }
 
 
 // new ES client
 func NewEsClient(url, index, indexType, mapping string) (*EsClient) {
 	c := &EsClient{
-		Up: make(chan struct{}, 1),
+		up: make(chan struct{}, 1),
 		down: make(chan struct{}, 1),
 		indexDown: make(chan struct{}, 1),
 		bulkRequest: make(chan struct{}, 1),
@@ -45,6 +47,8 @@ func NewEsClient(url, index, indexType, mapping string) (*EsClient) {
 		index: index,
 		indexType: indexType,
 		mapping: mapping,
+
+		Ready: make(chan struct{}, 1),
 	}
 
 	c.setState(c.down)
@@ -98,7 +102,8 @@ func (c *EsClient) processLoop() {
 				}
 				break
 			}
-			c.setState(c.Up)
+			c.setState(c.up)
+			c.setState(c.Ready)
 
 		// ping and reconnect
 		case <-time.After(10000 * time.Millisecond):
