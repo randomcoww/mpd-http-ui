@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
+	// mpd_handler "local/mpd_handler"
 	mpd_event "github.com/randomcoww/go-mpd-es/mpd_event"
 	es_handler "github.com/randomcoww/go-mpd-es/es_handler"
 )
@@ -73,9 +74,15 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 	r.HandleFunc("/healthcheck", healthCheck).
 		Methods("GET")
 
-	r.HandleFunc("/playlist/items", querytPlaylistItems).
+	r.HandleFunc("/playlist/items", queryPlaylistItems).
 		Queries("start", "{start}").
 		Queries("end", "{end}").
+		Methods("GET")
+
+	r.HandleFunc("/status", queryStatus).
+		Methods("GET")
+
+	r.HandleFunc("/currentsong", currentSong).
 		Methods("GET")
 
 	r.HandleFunc("/database/search", search).
@@ -194,7 +201,7 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response{"ok"})
 }
 
-func querytPlaylistItems(w http.ResponseWriter, r *http.Request) {
+func queryPlaylistItems(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	fmt.Printf("Query playlist items %s\n", params)
 
@@ -204,6 +211,40 @@ func querytPlaylistItems(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err == nil {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(attrs)
+	} else {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(response{err.Error()})
+	}
+}
+
+
+func queryStatus(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("Query status\n")
+
+	attrs, err := mpdClient.Status()
+	w.Header().Set("Content-Type", "application/json")
+
+	if err == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(attrs)
+	} else {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(response{err.Error()})
+	}
+}
+
+
+func currentSong(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("Query current song\n")
+
+	attrs, err := mpdClient.CurrentSong()
+	w.Header().Set("Content-Type", "application/json")
+
+	if err == nil {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(attrs)
 	} else {
