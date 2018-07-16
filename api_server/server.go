@@ -2,16 +2,16 @@ package main
 
 import (
 	"fmt"
+	"time"
 	"log"
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/handlers"
+	"github.com/gorilla/websocket"
 	"net/http"
 	"strconv"
 	mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
 	mpd_event "github.com/randomcoww/go-mpd-es/mpd_event"
-	// mpd_handler "local/mpd_handler"
-	// mpd_event "local/mpd_event"
 	es_handler "github.com/randomcoww/go-mpd-es/es_handler"
 )
 
@@ -20,7 +20,19 @@ var (
 	mpdClient *mpd_handler.MpdClient
 	esClient *es_handler.EsClient
 	mpdEvent *mpd_event.MpdEvent
+
+	upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
 )
+
+
+const (
+	// Time allowed to write the file to the client.
+	writeWait = 10 * time.Second
+)
+
 
 type response struct {
 	Message string
@@ -64,6 +76,12 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 	r.HandleFunc("/playlist", clearPlaylist).
 		Methods("DELETE")
 
+  // websocket
+	r.HandleFunc("/ws", serveWs)
+
+  // websocket test
+	r.HandleFunc("/hometest", serveHome)
+
 	mpdClient = mpd_handler.NewMpdClient("tcp", mpdUrl)
 	esClient = es_handler.NewEsClient(esUrl, esIndex, esDocument, "")
 
@@ -71,21 +89,11 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 	<-esClient.Ready
 
 	mpdEvent = mpd_event.NewEventWatcher("tcp", mpdUrl)
-	go eventReader()
 
 	fmt.Printf("API server start on %s\n", listenUrl)
 	log.Fatal(http.ListenAndServe(listenUrl, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(r)))
 }
 
-
-func eventReader() {
-	for {
-		select {
-		case e := <-mpdEvent.Event:
-			fmt.Printf("MPD event %s\n", e)
-		}
-	}
-}
 
 
 func parseNum(input string) (int) {
@@ -99,17 +107,54 @@ func parseNum(input string) (int) {
 }
 
 
-//
-// handle func
-//
+func sendMPDEvents(ws *websocket.Conn) {
+	for {
+		select {
+		case e := <-mpdEvent.Event:
+			ws.SetWriteDeadline(time.Now().Add(writeWait))
+			err := ws.WriteMessage(websocket.TextMessage, []byte(e))
 
+			if err != nil {
+				fmt.Printf("Websocket send error: %s\n", err)
+
+			} else {
+				fmt.Printf("Got MPD event: %s\n", e)
+			}
+		}
+	}
+}
+
+
+//
+// web socket feeder
+// based on example https://github.com/gorilla/websocket/blob/master/examples/filewatch/main.go
+//
+func serveWs(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("Serving WS\n")
+
+	ws, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		if _, ok := err.(websocket.HandshakeError); !ok {
+			log.Printf("%s\n", err)
+		}
+
+		fmt.Printf("Serving WS err %s\n", err)
+		return
+	}
+
+	go sendMPDEvents(ws)
+}
+
+
+//
+// handle funcs
+//
 func healthCheck(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Healthcheck\n")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response{"ok"})
 }
-
 
 func querytPlaylistItems(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
