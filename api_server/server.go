@@ -2,16 +2,17 @@ package main
 
 import (
 	"fmt"
+	"time"
 	"log"
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/handlers"
+	"github.com/gorilla/websocket"
 	"net/http"
 	"strconv"
 	mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
-	mpd_event "github.com/randomcoww/go-mpd-es/mpd_event"
 	// mpd_handler "local/mpd_handler"
-	// mpd_event "local/mpd_event"
+	mpd_event "github.com/randomcoww/go-mpd-es/mpd_event"
 	es_handler "github.com/randomcoww/go-mpd-es/es_handler"
 )
 
@@ -20,7 +21,31 @@ var (
 	mpdClient *mpd_handler.MpdClient
 	esClient *es_handler.EsClient
 	mpdEvent *mpd_event.MpdEvent
+
+	upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
 )
+
+
+// Client is a middleman between the websocket connection and the hub.
+type Client struct {
+	hub *Hub
+
+	// The websocket connection.
+	conn *websocket.Conn
+
+	// Buffered channel of outbound messages.
+	send chan []byte
+}
+
+
+const (
+	// Time allowed to write the file to the client.
+	writeWait = 10 * time.Second
+)
+
 
 type response struct {
 	Message string
@@ -28,6 +53,18 @@ type response struct {
 
 
 func NewServer(listenUrl, mpdUrl, esUrl string) {
+
+  // backend stuff
+	mpdClient = mpd_handler.NewMpdClient("tcp", mpdUrl)
+	esClient = es_handler.NewEsClient(esUrl, esIndex, esDocument, "")
+	mpdEvent = mpd_event.NewEventWatcher("tcp", mpdUrl)
+
+  // websocket hub
+	hub := newHub()
+	go hub.run()
+	go hub.eventBroadcaster()
+
+  // mux routes
 	allowedHeaders := handlers.AllowedHeaders([]string{"X-Requested-With"})
 	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
 	allowedMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
@@ -37,9 +74,15 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 	r.HandleFunc("/healthcheck", healthCheck).
 		Methods("GET")
 
-	r.HandleFunc("/playlist/items", querytPlaylistItems).
+	r.HandleFunc("/playlist/items", queryPlaylistItems).
 		Queries("start", "{start}").
 		Queries("end", "{end}").
+		Methods("GET")
+
+	r.HandleFunc("/status", queryStatus).
+		Methods("GET")
+
+	r.HandleFunc("/currentsong", currentSong).
 		Methods("GET")
 
 	r.HandleFunc("/database/search", search).
@@ -64,28 +107,23 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 	r.HandleFunc("/playlist", clearPlaylist).
 		Methods("DELETE")
 
-	mpdClient = mpd_handler.NewMpdClient("tcp", mpdUrl)
-	esClient = es_handler.NewEsClient(esUrl, esIndex, esDocument, "")
+  // websocket handler
+	r.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		serveWs(hub, w, r)
+	})
 
+  // websocket test
+	r.HandleFunc("/hometest", serveHome)
+
+  // wait backend start
 	<-mpdClient.Ready
 	<-esClient.Ready
 
-	mpdEvent = mpd_event.NewEventWatcher("tcp", mpdUrl)
-	go eventReader()
-
+  // serve http
 	fmt.Printf("API server start on %s\n", listenUrl)
 	log.Fatal(http.ListenAndServe(listenUrl, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(r)))
 }
 
-
-func eventReader() {
-	for {
-		select {
-		case e := <-mpdEvent.Event:
-			fmt.Printf("MPD event %s\n", e)
-		}
-	}
-}
 
 
 func parseNum(input string) (int) {
@@ -99,10 +137,63 @@ func parseNum(input string) (int) {
 }
 
 
-//
-// handle func
-//
+func (h *Hub) eventBroadcaster() {
+	for {
+		select {
+		case e := <-mpdEvent.Event:
+			fmt.Printf("Got MPD event: %s\n", e)
+			h.broadcast <-[]byte(e)
+		}
+	}
+}
 
+
+func (c *Client) sendMPDEvents() {
+	for {
+		select {
+		case message, ok := <-c.send:
+			if ok {
+				err := c.conn.WriteMessage(websocket.TextMessage, message)
+
+				if err != nil {
+					fmt.Printf("Websocket send error: %s\n", err)
+
+				} else {
+					fmt.Printf("Got MPD event: %s\n", message)
+				}
+			}
+		}
+	}
+}
+
+
+//
+// web socket feeder
+// based on example https://github.com/gorilla/websocket/blob/master/examples/filewatch/main.go
+//
+func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
+	// fmt.Printf("Serving WS\n")
+
+	ws, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		if _, ok := err.(websocket.HandshakeError); !ok {
+			log.Printf("%s\n", err)
+		}
+
+		fmt.Printf("Serving WS err %s\n", err)
+		return
+	}
+
+	client := &Client{hub: hub, conn: ws, send: make(chan []byte, 256)}
+	client.hub.register <- client
+
+	go client.sendMPDEvents()
+}
+
+
+//
+// handle funcs
+//
 func healthCheck(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Healthcheck\n")
 	w.Header().Set("Content-Type", "application/json")
@@ -110,8 +201,7 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response{"ok"})
 }
 
-
-func querytPlaylistItems(w http.ResponseWriter, r *http.Request) {
+func queryPlaylistItems(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	fmt.Printf("Query playlist items %s\n", params)
 
@@ -121,6 +211,40 @@ func querytPlaylistItems(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err == nil {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(attrs)
+	} else {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(response{err.Error()})
+	}
+}
+
+
+func queryStatus(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("Query status\n")
+
+	attrs, err := mpdClient.Status()
+	w.Header().Set("Content-Type", "application/json")
+
+	if err == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(attrs)
+	} else {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(response{err.Error()})
+	}
+}
+
+
+func currentSong(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("Query current song\n")
+
+	attrs, err := mpdClient.CurrentSong()
+	w.Header().Set("Content-Type", "application/json")
+
+	if err == nil {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(attrs)
 	} else {

@@ -152,6 +152,12 @@ func (c *MpdClient) QueryPlaylistItems(start, end int) ([]mpd.Attrs, error) {
 	return attrs, err
 }
 
+//
+func (c *MpdClient) CurrentSong() (mpd.Attrs, error) {
+	attrs, err := c.conn.CurrentSong()
+	return attrs, err
+}
+
 // add database item to current playlist
 func (c *MpdClient) AddToPlaylist(mpdPath string) (error) {
 	err := c.conn.Add(mpdPath)
