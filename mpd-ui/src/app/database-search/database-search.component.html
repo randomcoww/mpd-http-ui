@@ -1,7 +1,0 @@
-<input #searchBox id="search-box" (keyup)="search(searchBox.value)" />
-
-<ul class="playlist">
-  <li *ngFor="let databaseItem of databaseItems$ | async" >
-    <span class="badge">{{databaseItem.artist}}</span> {{databaseItem.title}}
-  </li>
-</ul>
