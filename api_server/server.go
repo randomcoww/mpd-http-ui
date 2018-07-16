@@ -28,6 +28,18 @@ var (
 )
 
 
+// Client is a middleman between the websocket connection and the hub.
+type Client struct {
+	hub *Hub
+
+	// The websocket connection.
+	conn *websocket.Conn
+
+	// Buffered channel of outbound messages.
+	send chan []byte
+}
+
+
 const (
 	// Time allowed to write the file to the client.
 	writeWait = 10 * time.Second
@@ -40,6 +52,18 @@ type response struct {
 
 
 func NewServer(listenUrl, mpdUrl, esUrl string) {
+
+  // backend stuff
+	mpdClient = mpd_handler.NewMpdClient("tcp", mpdUrl)
+	esClient = es_handler.NewEsClient(esUrl, esIndex, esDocument, "")
+	mpdEvent = mpd_event.NewEventWatcher("tcp", mpdUrl)
+
+  // websocket hub
+	hub := newHub()
+	go hub.run()
+	go hub.eventBroadcaster()
+
+  // mux routes
 	allowedHeaders := handlers.AllowedHeaders([]string{"X-Requested-With"})
 	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
 	allowedMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
@@ -76,20 +100,19 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 	r.HandleFunc("/playlist", clearPlaylist).
 		Methods("DELETE")
 
-  // websocket
-	r.HandleFunc("/ws", serveWs)
+  // websocket handler
+	r.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		serveWs(hub, w, r)
+	})
 
   // websocket test
 	r.HandleFunc("/hometest", serveHome)
 
-	mpdClient = mpd_handler.NewMpdClient("tcp", mpdUrl)
-	esClient = es_handler.NewEsClient(esUrl, esIndex, esDocument, "")
-
+  // wait backend start
 	<-mpdClient.Ready
 	<-esClient.Ready
 
-	mpdEvent = mpd_event.NewEventWatcher("tcp", mpdUrl)
-
+  // serve http
 	fmt.Printf("API server start on %s\n", listenUrl)
 	log.Fatal(http.ListenAndServe(listenUrl, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(r)))
 }
@@ -107,18 +130,30 @@ func parseNum(input string) (int) {
 }
 
 
-func sendMPDEvents(ws *websocket.Conn) {
+func (h *Hub) eventBroadcaster() {
 	for {
 		select {
 		case e := <-mpdEvent.Event:
-			ws.SetWriteDeadline(time.Now().Add(writeWait))
-			err := ws.WriteMessage(websocket.TextMessage, []byte(e))
+			fmt.Printf("Got MPD event: %s\n", e)
+			h.broadcast <-[]byte(e)
+		}
+	}
+}
 
-			if err != nil {
-				fmt.Printf("Websocket send error: %s\n", err)
 
-			} else {
-				fmt.Printf("Got MPD event: %s\n", e)
+func (c *Client) sendMPDEvents() {
+	for {
+		select {
+		case message, ok := <-c.send:
+			if ok {
+				err := c.conn.WriteMessage(websocket.TextMessage, message)
+
+				if err != nil {
+					fmt.Printf("Websocket send error: %s\n", err)
+
+				} else {
+					fmt.Printf("Got MPD event: %s\n", message)
+				}
 			}
 		}
 	}
@@ -129,8 +164,8 @@ func sendMPDEvents(ws *websocket.Conn) {
 // web socket feeder
 // based on example https://github.com/gorilla/websocket/blob/master/examples/filewatch/main.go
 //
-func serveWs(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("Serving WS\n")
+func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
+	// fmt.Printf("Serving WS\n")
 
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -142,7 +177,10 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go sendMPDEvents(ws)
+	client := &Client{hub: hub, conn: ws, send: make(chan []byte, 256)}
+	client.hub.register <- client
+
+	go client.sendMPDEvents()
 }
 
 
