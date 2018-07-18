@@ -174,6 +174,8 @@ func (c *Client) sendMPDEvents() {
 func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	// fmt.Printf("Serving WS\n")
 
+	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
+
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		if _, ok := err.(websocket.HandshakeError); !ok {
