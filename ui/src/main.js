@@ -34,10 +34,10 @@ Vue.use(Vuetify, {
 
 // Websocket
 Vue.use(VueNativeSock, 'ws://localhost:3000/ws', {
-  reconnection: true, // (Boolean) whether to reconnect automatically (false)
-  reconnectionAttempts: 5, // (Number) number of reconnection attempts before giving up (Infinity),
-  reconnectionDelay: 3000, // (Number) how long to initially wait before attempting a new (1000)
-  store: store
+  reconnection: true,
+  reconnectionDelay: 3000,
+  store: store,
+  format: 'json'
 })
 
 // Styles

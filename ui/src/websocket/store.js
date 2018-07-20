@@ -1,8 +1,10 @@
 const defaults = {
   socket: {
     isConnected: false,
-    message: '',
-    reconnectError: false
+    reconnectError: false,
+    status: {},
+    playlist: [],
+    currentsong: {}
   }
 }
 
@@ -22,7 +24,7 @@ const websocket = {
     },
     // default handler called for all methods
     SOCKET_ONMESSAGE (state, message) {
-      state.socket.message = message
+      console.info(state, message)
     },
     // mutations for reconnect methods
     SOCKET_RECONNECT (state, count) {
@@ -30,6 +32,18 @@ const websocket = {
     },
     SOCKET_RECONNECT_ERROR (state) {
       state.socket.reconnectError = true
+    },
+    playlist (state, message) {
+      console.info(message.value)
+      state.socket.playlist = message.value
+    },
+    status (state, message) {
+      console.info(message.value)
+      state.socket.status = message.value
+    },
+    currentsong (state, message) {
+      console.info(message.value)
+      state.socket.currentsong = message.value
     }
   }
 }
