@@ -4,6 +4,7 @@ v-card-text
     :max="seek_duration"
     :value="seek_elaspsed"
     v-on:mousedown="onmousedown"
+    v-on:click="onmouseup"
     v-on:change="onchange")
   v-layout(row wrap style="align-items: center;")
     v-flex(d-flex xs3 sm2 md1)
@@ -54,8 +55,12 @@ export default {
       this.$store.commit('elapsed', { value: value })
     },
     onmousedown () {
-      console.info('dragging')
+      console.info('drag_start')
       this.dragStartValue = this.$store.state.websocket.socket.elapsed
+    },
+    onmouseup () {
+      console.info('drag_end')
+      this.dragStartValue = null
     }
   }
 }
