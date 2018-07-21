@@ -19,7 +19,7 @@ v-container.my-dashboard(
     v-flex(d-flex xs12 sm12 md6)
       v-card.my-dashboard__pizza-status
         v-card-title
-          .title Search
+          .title Status
 
     // Bottom Row
     v-flex(d-flex xs12 sm12 md6)
@@ -32,7 +32,7 @@ v-container.my-dashboard(
     v-flex(d-flex xs12 sm12 md6)
       v-card.my-dashboard__pizza-status
         v-card-title
-          .title Search
+          .title Library
         v-card-title
           search-results()
 

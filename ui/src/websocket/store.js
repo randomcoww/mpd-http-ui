@@ -4,7 +4,8 @@ const defaults = {
     reconnectError: false,
     status: {},
     playlist: null,
-    currentsong: {}
+    currentsong: {},
+    seel: null
   }
 }
 
@@ -38,12 +39,16 @@ const websocket = {
       state.socket.playlist = message.value
     },
     status (state, message) {
-      // console.info(message.value)
+      console.info(message.value)
       state.socket.status = message.value
     },
     currentsong (state, message) {
       // console.info(message.value)
       state.socket.currentsong = message.value
+    },
+    seek (state, message) {
+      console.info(message.value)
+      state.socket.seek = message.value
     }
   }
 }

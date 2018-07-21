@@ -10,9 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 	"net/http"
 	"strconv"
-	mpd "github.com/fhs/gompd/mpd"
 	mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
-	// mpd_handler "local/mpd_handler"
 	mpd_event "github.com/randomcoww/go-mpd-es/mpd_event"
 	es_handler "github.com/randomcoww/go-mpd-es/es_handler"
 )
@@ -39,6 +37,9 @@ type Client struct {
 
 	// Buffered channel of outbound messages.
 	send chan []byte
+
+	// send struct when the player event
+	seekStart chan struct{}
 }
 
 
@@ -50,16 +51,6 @@ const (
 
 type response struct {
 	Message string
-}
-
-type messageAttrs struct {
-	Name string `json:"mutation"`
-	Data []mpd.Attrs `json:"value"`
-}
-
-type messageAttr struct {
-	Name string `json:"mutation"`
-	Data mpd.Attrs `json:"value"`
 }
 
 
@@ -136,7 +127,6 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 }
 
 
-
 func parseNum(input string) (int) {
 	v, err := strconv.Atoi(input)
 	if err != nil {
@@ -165,7 +155,14 @@ func (c *Client) sendStatusMessage() {
 		return
 	}
 
-	err = c.conn.WriteJSON(&messageAttr{Data: attrs, Name: "status"})
+	if attrs["state"] == "play" {
+		select {
+		case c.seekStart <-struct{}{}:
+		default:
+		}
+	}
+
+	err = c.conn.WriteJSON(&mpd_event.AttrMessage{Data: attrs, Name: "status"})
 	if err != nil {
 		fmt.Printf("Failed to write message %s\n", err)
 		return
@@ -178,7 +175,7 @@ func (c *Client) sendCurrentSongMessage() {
 		return
 	}
 
-	err = c.conn.WriteJSON(&messageAttr{Data: attrs, Name: "currentsong"})
+	err = c.conn.WriteJSON(&mpd_event.AttrMessage{Data: attrs, Name: "currentsong"})
 	if err != nil {
 		fmt.Printf("Failed to write message %s\n", err)
 		return
@@ -191,7 +188,7 @@ func (c *Client) sendPlaylistMessage() {
 		return
 	}
 
-	err = c.conn.WriteJSON(&messageAttrs{Data: attrs, Name: "playlist"})
+	err = c.conn.WriteJSON(&mpd_event.AttrsMessage{Data: attrs, Name: "playlist"})
 	if err != nil {
 		fmt.Printf("Failed to write message %s\n", err)
 		return
@@ -227,6 +224,31 @@ func (c *Client) sendMPDEvents() {
 }
 
 
+func (c *Client) sendSeekUpdates() {
+	for {
+		select {
+		case <-c.seekStart:
+
+			for {
+				select {
+				case <- time.After(300 * time.Millisecond):
+					attrs, err := mpdClient.Status()
+					if err != nil {
+						continue
+					}
+
+					if attrs["state"] == "play" {
+						c.conn.WriteJSON(&mpd_event.StringMessage{Data: attrs["elapsed"], Name: "seek"})
+					} else {
+						break
+					}
+				}
+			}
+		}
+	}
+}
+
+
 //
 // web socket feeder
 // based on example https://github.com/gorilla/websocket/blob/master/examples/filewatch/main.go
@@ -246,10 +268,18 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := &Client{hub: hub, conn: ws, send: make(chan []byte, 256)}
+	client := &Client{
+		hub: hub,
+		conn: ws,
+		send: make(chan []byte, 256),
+		seekStart: make(chan struct{}, 1),
+	}
+
 	client.hub.register <- client
+	client.seekStart <- struct{}{}
 
 	go client.sendMPDEvents()
+	go client.sendSeekUpdates()
 }
 
 

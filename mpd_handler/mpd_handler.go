@@ -21,18 +21,6 @@ type MpdClient struct {
 	Ready chan struct{}
 }
 
-
-type MessageAttrs struct {
-	Name string `json:"mutation"`
-	Data []mpd.Attrs `json:"value"`
-}
-
-type MessageAttr struct {
-	Name string `json:"mutation"`
-	Data mpd.Attrs `json:"value"`
-}
-
-
 // create new MPD client
 func NewMpdClient(proto, addr string) (*MpdClient) {
 	c := &MpdClient{
