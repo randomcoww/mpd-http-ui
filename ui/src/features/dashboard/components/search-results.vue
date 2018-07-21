@@ -14,36 +14,23 @@ v-card-text
 </template>
 
 <script>
-import axios from 'axios'
-
 export default {
   data () {
     return {
       databasequery: null,
-      searchresults: [],
       errored: false
+    }
+  },
+
+  computed: {
+    searchresults () {
+      return this.$store.state.websocket.socket.search
     }
   },
 
   watch: {
     databasequery (after, before) {
-      this.fetch()
-    }
-  },
-
-  methods: {
-    fetch () {
-      axios.get('http://localhost:3000/database/search', {
-        params: {
-          q: this.databasequery,
-          size: 100
-        }
-      }).then(response => {
-        this.searchresults = response.data
-      }).catch(error => {
-        console.log(error)
-        this.errored = true
-      })
+      this.$socket.sendObj({ mutation: 'search', value: [this.databasequery, 100] })
     }
   }
 }

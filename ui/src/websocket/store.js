@@ -4,6 +4,7 @@ const defaults = {
     reconnectError: false,
     status: {},
     playlist: [],
+    search: [],
     currentsong: {},
     elapsed: null,
     duration: null
@@ -49,6 +50,9 @@ const websocket = {
     seek (state, message) {
       state.socket.elapsed = message.value[0]
       state.socket.duration = message.value[1]
+    },
+    search (state, message) {
+      state.socket.search = message.value
     },
     elapsed (state, message) {
       state.socket.elapsed = message.value

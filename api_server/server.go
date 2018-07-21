@@ -78,10 +78,6 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 	r.HandleFunc("/healthcheck", healthCheck).
 		Methods("GET")
 
-	r.HandleFunc("/database/search", search).
-		Queries("q", "{query}").
-		Methods("GET")
-
 	// websocket handler
 	r.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		serveWs(hub, w, r)
@@ -185,6 +181,25 @@ func (c *Client) sendSeekMessage() {
 	}
 }
 
+func (c *Client) sendSearchMessage(query string, size int) {
+	search, err := esClient.Search(query, size)
+
+	if err != nil {
+		return
+	}
+
+	var	result []*json.RawMessage
+	for _, hits := range search.Hits.Hits {
+		result = append(result, hits.Source)
+	}
+
+	err = c.conn.WriteJSON(&socketMessage{Data: result, Name: "search"})
+	if err != nil {
+		fmt.Printf("Failed to write message %s\n", err)
+		return
+	}
+}
+
 
 func (c *Client) readSocketEvents() {
 	for {
@@ -211,6 +226,13 @@ func (c *Client) readSocketEvents() {
 		case "currentsong":
       // respond with current song
 			c.sendCurrentSongMessage()
+
+		case "search":
+			d := v.Data.([]interface{})
+			query := d[0].(string)
+			size := int(d[1].(float64))
+
+			c.sendSearchMessage(query, size)
 		}
 	}
 }
@@ -286,26 +308,4 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response{"ok"})
-}
-
-func search(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	fmt.Printf("Search database %s\n", params)
-
-	search, err := esClient.Search(params["query"], 100)
-	w.Header().Set("Content-Type", "application/json")
-
-	if err == nil {
-		w.WriteHeader(http.StatusOK)
-
-		var	result []*json.RawMessage
-		for _, hits := range search.Hits.Hits {
-			result = append(result, hits.Source)
-		}
-
-		json.NewEncoder(w).Encode(result)
-	} else {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		json.NewEncoder(w).Encode(response{err.Error()})
-	}
 }
