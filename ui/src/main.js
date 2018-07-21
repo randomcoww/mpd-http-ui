@@ -9,6 +9,7 @@ import App from './app'
 import Loading from './components/loading'
 import Appbar from './components/app-bar'
 import Appfooter from './components/app-footer'
+import VueNativeSock from 'vue-native-websocket'
 
 Vue.config.productionTip = false
 
@@ -29,6 +30,14 @@ Vue.use(Vuetify, {
     secondary: '#D81B60',
     accent: '#805441'
   }
+})
+
+// Websocket
+Vue.use(VueNativeSock, 'ws://localhost:3000/ws', {
+  reconnection: true,
+  reconnectionDelay: 3000,
+  store: store,
+  format: 'json'
 })
 
 // Styles

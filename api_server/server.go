@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"strconv"
 	mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
-	// mpd_handler "local/mpd_handler"
 	mpd_event "github.com/randomcoww/go-mpd-es/mpd_event"
 	es_handler "github.com/randomcoww/go-mpd-es/es_handler"
 )
@@ -38,6 +37,9 @@ type Client struct {
 
 	// Buffered channel of outbound messages.
 	send chan []byte
+
+	// send struct when the player event
+	seekStart chan struct{}
 }
 
 
@@ -54,17 +56,17 @@ type response struct {
 
 func NewServer(listenUrl, mpdUrl, esUrl string) {
 
-  // backend stuff
+	// backend stuff
 	mpdClient = mpd_handler.NewMpdClient("tcp", mpdUrl)
 	esClient = es_handler.NewEsClient(esUrl, esIndex, esDocument, "")
 	mpdEvent = mpd_event.NewEventWatcher("tcp", mpdUrl)
 
-  // websocket hub
+	// websocket hub
 	hub := newHub()
 	go hub.run()
 	go hub.eventBroadcaster()
 
-  // mux routes
+	// mux routes
 	allowedHeaders := handlers.AllowedHeaders([]string{"X-Requested-With"})
 	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
 	allowedMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
@@ -107,23 +109,22 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 	r.HandleFunc("/playlist", clearPlaylist).
 		Methods("DELETE")
 
-  // websocket handler
+	// websocket handler
 	r.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		serveWs(hub, w, r)
 	})
 
-  // websocket test
+	// websocket test
 	r.HandleFunc("/hometest", serveHome)
 
-  // wait backend start
+	// wait backend start
 	<-mpdClient.Ready
 	<-esClient.Ready
 
-  // serve http
+	// serve http
 	fmt.Printf("API server start on %s\n", listenUrl)
 	log.Fatal(http.ListenAndServe(listenUrl, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(r)))
 }
-
 
 
 func parseNum(input string) (int) {
@@ -148,18 +149,99 @@ func (h *Hub) eventBroadcaster() {
 }
 
 
+func (c *Client) sendStatusMessage() {
+	attrs, err := mpdClient.Status()
+	if err != nil {
+		return
+	}
+
+	if attrs["state"] == "play" {
+		select {
+		case c.seekStart <-struct{}{}:
+		default:
+		}
+	}
+
+	err = c.conn.WriteJSON(&mpd_event.AttrMessage{Data: attrs, Name: "status"})
+	if err != nil {
+		fmt.Printf("Failed to write message %s\n", err)
+		return
+	}
+}
+
+func (c *Client) sendCurrentSongMessage() {
+	attrs, err := mpdClient.CurrentSong()
+	if err != nil {
+		return
+	}
+
+	err = c.conn.WriteJSON(&mpd_event.AttrMessage{Data: attrs, Name: "currentsong"})
+	if err != nil {
+		fmt.Printf("Failed to write message %s\n", err)
+		return
+	}
+}
+
+func (c *Client) sendPlaylistMessage() {
+	attrs, err := mpdClient.QueryPlaylistItems(-1, -1)
+	if err != nil {
+		return
+	}
+
+	err = c.conn.WriteJSON(&mpd_event.AttrsMessage{Data: attrs, Name: "playlist"})
+	if err != nil {
+		fmt.Printf("Failed to write message %s\n", err)
+		return
+	}
+}
+
+
 func (c *Client) sendMPDEvents() {
 	for {
 		select {
 		case message, ok := <-c.send:
 			if ok {
-				err := c.conn.WriteMessage(websocket.TextMessage, message)
+				switch string(message) {
+				case "player":
+					c.sendStatusMessage()
+					c.sendCurrentSongMessage()
 
-				if err != nil {
-					fmt.Printf("Websocket send error: %s\n", err)
+				case "mixer":
+					c.sendStatusMessage()
 
-				} else {
-					fmt.Printf("Got MPD event: %s\n", message)
+				case "options":
+					c.sendStatusMessage()
+
+				case "outputs":
+					c.sendStatusMessage()
+
+				case "playlist":
+					c.sendPlaylistMessage()
+				}
+			}
+		}
+	}
+}
+
+
+func (c *Client) sendSeekUpdates() {
+	for {
+		select {
+		case <-c.seekStart:
+
+			for {
+				select {
+				case <- time.After(300 * time.Millisecond):
+					attrs, err := mpdClient.Status()
+					if err != nil {
+						continue
+					}
+
+					if attrs["state"] == "play" {
+						c.conn.WriteJSON(&mpd_event.StringMessage{Data: attrs["elapsed"], Name: "seek"})
+					} else {
+						break
+					}
 				}
 			}
 		}
@@ -174,6 +256,8 @@ func (c *Client) sendMPDEvents() {
 func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	// fmt.Printf("Serving WS\n")
 
+	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
+
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		if _, ok := err.(websocket.HandshakeError); !ok {
@@ -184,10 +268,18 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := &Client{hub: hub, conn: ws, send: make(chan []byte, 256)}
+	client := &Client{
+		hub: hub,
+		conn: ws,
+		send: make(chan []byte, 256),
+		seekStart: make(chan struct{}, 1),
+	}
+
 	client.hub.register <- client
+	client.seekStart <- struct{}{}
 
 	go client.sendMPDEvents()
+	go client.sendSeekUpdates()
 }
 
 

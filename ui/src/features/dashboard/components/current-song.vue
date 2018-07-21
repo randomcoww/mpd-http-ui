@@ -5,7 +5,7 @@ v-card-text
       | Artist
     v-flex(d-flex xs12 sm12 md10)
       v-layout(style="align-items: center;")
-        v-flex.text-xs-left(md10) {{ currentsong.Artist }}
+        v-flex.text-xs-left(md10) {{ currentsong.Artist || initialsong.Artist }}
         v-flex.text-xs-right(md2)
           v-btn(flat icon color="primary")
             v-icon delete
@@ -13,7 +13,7 @@ v-card-text
       | Title
     v-flex(d-flex xs12 sm12 md10)
       v-layout(style="align-items: center;")
-        v-flex.text-xs-left(md10) {{ currentsong.Title }}
+        v-flex.text-xs-left(md10) {{ currentsong.Title || initialsong.Title }}
         v-flex.text-xs-right(md2)
           v-btn(flat icon color="primary")
             v-icon delete
@@ -21,7 +21,7 @@ v-card-text
       | Album
     v-flex(d-flex xs12 sm12 md10)
       v-layout(style="align-items: center;")
-        v-flex.text-xs-left(md10) {{ currentsong.Album }}
+        v-flex.text-xs-left(md10) {{ currentsong.Album || initialsong.Album }}
         v-flex.text-xs-right(md2)
           v-btn(flat icon color="primary")
             v-icon delete
@@ -29,7 +29,7 @@ v-card-text
       | File
     v-flex(d-flex xs12 sm12 md10)
       v-layout(style="align-items: center;")
-        v-flex.text-xs-left(md10) {{ currentsong.file }}
+        v-flex.text-xs-left(md10) {{ currentsong.file || initialsong.file }}
         v-flex.text-xs-right(md2)
           v-btn(flat icon color="primary")
             v-icon delete
@@ -41,14 +41,20 @@ import axios from 'axios'
 export default {
   data () {
     return {
-      currentsong: {},
+      initialsong: {},
       errored: false
+    }
+  },
+
+  computed: {
+    currentsong () {
+      return this.$store.state.websocket.socket.currentsong
     }
   },
 
   mounted () {
     axios.get('http://localhost:3000/currentsong').then(response => {
-      this.currentsong = response.data
+      this.initialsong = response.data
     }).catch(error => {
       console.log(error)
       this.errored = true

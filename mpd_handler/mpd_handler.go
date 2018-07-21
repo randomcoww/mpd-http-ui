@@ -9,7 +9,6 @@ import (
 	"time"
 	"errors"
 	mpd "github.com/fhs/gompd/mpd"
-	// mpd "local/gompd/mpd"
 )
 
 type MpdClient struct {
@@ -19,10 +18,8 @@ type MpdClient struct {
 	conn *mpd.Client
 	proto string
 	addr string
-
 	Ready chan struct{}
 }
-
 
 // create new MPD client
 func NewMpdClient(proto, addr string) (*MpdClient) {

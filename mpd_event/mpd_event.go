@@ -19,6 +19,22 @@ type MpdEvent struct {
 	Event chan string
 }
 
+// websocket messages
+type AttrsMessage struct {
+	Name string `json:"mutation"`
+	Data []mpd.Attrs `json:"value"`
+}
+
+type AttrMessage struct {
+	Name string `json:"mutation"`
+	Data mpd.Attrs `json:"value"`
+}
+
+type StringMessage struct {
+	Name string `json:"mutation"`
+	Data string `json:"value"`
+}
+
 
 // create new MPD client
 func NewEventWatcher(proto, addr string) (*MpdEvent) {
