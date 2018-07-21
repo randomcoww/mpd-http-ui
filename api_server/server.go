@@ -10,8 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 	"net/http"
 	"strconv"
-	// mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
-	mpd_handler "local/mpd_handler"
+	mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
 	mpd_event "github.com/randomcoww/go-mpd-es/mpd_event"
 	es_handler "github.com/randomcoww/go-mpd-es/es_handler"
 )

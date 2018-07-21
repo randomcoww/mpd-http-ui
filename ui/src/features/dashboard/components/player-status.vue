@@ -5,6 +5,22 @@ v-card-text
     :value="seek_elaspsed"
     v-on:mousedown="onmousedown"
     v-on:change="onchange")
+  v-layout(row wrap style="align-items: center;")
+    v-flex(d-flex xs3 sm2 md1 @mouseover="onmouseover")
+      v-btn(flat icon color="primary")
+        v-icon fast_rewind
+    v-flex(d-flex xs3 sm2 md1)
+      v-btn(flat icon color="primary")
+        v-icon play_arrow
+    v-flex(d-flex xs3 sm2 md1)
+      v-btn(flat icon color="primary")
+        v-icon pause
+    v-flex(d-flex xs3 sm2 md1)
+      v-btn(flat icon color="primary")
+        v-icon stop
+    v-flex(d-flex xs3 sm2 md1)
+      v-btn(flat icon color="primary")
+        v-icon fast_forward
 </template>
 
 <script>
