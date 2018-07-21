@@ -209,14 +209,7 @@ func (c *Client) sendMPDEvents() {
 					c.sendPlaylistMessage()
 				}
 			}
-		}
-	}
-}
 
-
-func (c *Client) sendSeekUpdates() {
-	for {
-		select {
 		case <- time.After(1000 * time.Millisecond):
 			attrs, err := mpdClient.Status()
 			if err != nil {
@@ -276,7 +269,6 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 
 	client.hub.register <- client
 	go client.sendMPDEvents()
-	go client.sendSeekUpdates()
 }
 
 
