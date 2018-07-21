@@ -37,9 +37,6 @@ type Client struct {
 
 	// Buffered channel of outbound messages.
 	send chan []byte
-
-	// send struct when the player event
-	seekStart chan struct{}
 }
 
 
@@ -51,6 +48,11 @@ const (
 
 type response struct {
 	Message string
+}
+
+type socketMessage struct {
+	Name string `json:"mutation"`
+	Data interface{} `json:"value"`
 }
 
 
@@ -155,14 +157,7 @@ func (c *Client) sendStatusMessage() {
 		return
 	}
 
-	if attrs["state"] == "play" {
-		select {
-		case c.seekStart <-struct{}{}:
-		default:
-		}
-	}
-
-	err = c.conn.WriteJSON(&mpd_event.AttrMessage{Data: attrs, Name: "status"})
+	err = c.conn.WriteJSON(&socketMessage{Data: attrs, Name: "status"})
 	if err != nil {
 		fmt.Printf("Failed to write message %s\n", err)
 		return
@@ -175,7 +170,7 @@ func (c *Client) sendCurrentSongMessage() {
 		return
 	}
 
-	err = c.conn.WriteJSON(&mpd_event.AttrMessage{Data: attrs, Name: "currentsong"})
+	err = c.conn.WriteJSON(&socketMessage{Data: attrs, Name: "currentsong"})
 	if err != nil {
 		fmt.Printf("Failed to write message %s\n", err)
 		return
@@ -188,10 +183,40 @@ func (c *Client) sendPlaylistMessage() {
 		return
 	}
 
-	err = c.conn.WriteJSON(&mpd_event.AttrsMessage{Data: attrs, Name: "playlist"})
+	err = c.conn.WriteJSON(&socketMessage{Data: attrs, Name: "playlist"})
 	if err != nil {
 		fmt.Printf("Failed to write message %s\n", err)
 		return
+	}
+}
+
+func (c *Client) sendSeekMessage() {
+	attrs, err := mpdClient.Status()
+	if err != nil {
+		return
+	}
+
+	switch attrs["state"] {
+	case "play":
+		elapsed, err := strconv.ParseFloat(attrs["elapsed"], 32)
+		if err != nil {
+			return
+		}
+
+		duration, err := strconv.ParseFloat(attrs["duration"], 32)
+		if err != nil {
+			return
+		}
+
+		var seek float64
+
+		if duration > 0 {
+			seek = (elapsed / duration) * 100
+		} else {
+			seek = 0.0
+		}
+
+		c.conn.WriteJSON(&socketMessage{Data: seek, Name: "seek"})
 	}
 }
 
@@ -219,31 +244,9 @@ func (c *Client) sendMPDEvents() {
 					c.sendPlaylistMessage()
 				}
 			}
-		}
-	}
-}
 
-
-func (c *Client) sendSeekUpdates() {
-	for {
-		select {
-		case <-c.seekStart:
-
-			for {
-				select {
-				case <- time.After(300 * time.Millisecond):
-					attrs, err := mpdClient.Status()
-					if err != nil {
-						continue
-					}
-
-					if attrs["state"] == "play" {
-						c.conn.WriteJSON(&mpd_event.StringMessage{Data: attrs["elapsed"], Name: "seek"})
-					} else {
-						break
-					}
-				}
-			}
+		case <- time.After(1000 * time.Millisecond):
+			c.sendSeekMessage()
 		}
 	}
 }
@@ -272,14 +275,10 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		hub: hub,
 		conn: ws,
 		send: make(chan []byte, 256),
-		seekStart: make(chan struct{}, 1),
 	}
 
 	client.hub.register <- client
-	client.seekStart <- struct{}{}
-
 	go client.sendMPDEvents()
-	go client.sendSeekUpdates()
 }
 
 
