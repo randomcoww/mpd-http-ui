@@ -36,8 +36,6 @@ v-card-text
 </template>
 
 <script>
-import axios from 'axios'
-
 export default {
   data () {
     return {
@@ -52,13 +50,8 @@ export default {
     }
   },
 
-  mounted () {
-    axios.get('http://localhost:3000/currentsong').then(response => {
-      this.initialsong = response.data
-    }).catch(error => {
-      console.log(error)
-      this.errored = true
-    })
+  created () {
+    this.$socket.sendObj({ mutation: 'currentsong' })
   }
 }
 </script>

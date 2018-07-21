@@ -3,7 +3,7 @@ const defaults = {
     isConnected: false,
     reconnectError: false,
     status: {},
-    playlist: null,
+    playlist: [],
     currentsong: {},
     elapsed: null,
     duration: null

@@ -6,7 +6,7 @@ v-card-text
     v-on:mousedown="onmousedown"
     v-on:change="onchange")
   v-layout(row wrap style="align-items: center;")
-    v-flex(d-flex xs3 sm2 md1 @mouseover="onmouseover")
+    v-flex(d-flex xs3 sm2 md1)
       v-btn(flat icon color="primary")
         v-icon fast_rewind
     v-flex(d-flex xs3 sm2 md1)
