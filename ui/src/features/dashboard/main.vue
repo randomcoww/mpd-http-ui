@@ -20,6 +20,8 @@ v-container.my-dashboard(
       v-card.my-dashboard__pizza-status
         v-card-title
           .title Status
+        v-card-title
+          player-status()
 
     // Bottom Row
     v-flex(d-flex xs12 sm12 md6)
@@ -45,6 +47,7 @@ import LineChart from './components/line-chart'
 import Playlist from './components/playlist'
 import CurrentSong from './components/current-song'
 import SearchResults from './components/search-results'
+import PlayerStatus from './components/player-status'
 
 export default {
   name: 'Dashboard',
@@ -54,7 +57,8 @@ export default {
     LineChart,
     Playlist,
     CurrentSong,
-    SearchResults
+    SearchResults,
+    PlayerStatus
   },
 
   data () {

@@ -37,9 +37,6 @@ type Client struct {
 
 	// Buffered channel of outbound messages.
 	send chan []byte
-
-	// send struct when the player event
-	seekStart chan struct{}
 }
 
 
@@ -155,13 +152,6 @@ func (c *Client) sendStatusMessage() {
 		return
 	}
 
-	if attrs["state"] == "play" {
-		select {
-		case c.seekStart <-struct{}{}:
-		default:
-		}
-	}
-
 	err = c.conn.WriteJSON(&mpd_event.AttrMessage{Data: attrs, Name: "status"})
 	if err != nil {
 		fmt.Printf("Failed to write message %s\n", err)
@@ -227,22 +217,32 @@ func (c *Client) sendMPDEvents() {
 func (c *Client) sendSeekUpdates() {
 	for {
 		select {
-		case <-c.seekStart:
+		case <- time.After(1000 * time.Millisecond):
+			attrs, err := mpdClient.Status()
+			if err != nil {
+				continue
+			}
 
-			for {
-				select {
-				case <- time.After(300 * time.Millisecond):
-					attrs, err := mpdClient.Status()
-					if err != nil {
-						continue
-					}
-
-					if attrs["state"] == "play" {
-						c.conn.WriteJSON(&mpd_event.StringMessage{Data: attrs["elapsed"], Name: "seek"})
-					} else {
-						break
-					}
+			if attrs["state"] == "play" {
+				elapsed, err := strconv.ParseFloat(attrs["elapsed"], 32)
+				if err != nil {
+					elapsed = 0.0
 				}
+
+				duration, err := strconv.ParseFloat(attrs["duration"], 32)
+				if err != nil {
+					duration = 0.0
+				}
+
+				var seek float64
+
+				if duration > 0 {
+					seek = (elapsed / duration) * 100
+				} else {
+					seek = 0.0
+				}
+
+				c.conn.WriteJSON(&mpd_event.StringMessage{Data: strconv.FormatFloat(seek, 'f', 1, 32), Name: "seek"})
 			}
 		}
 	}
@@ -272,12 +272,9 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		hub: hub,
 		conn: ws,
 		send: make(chan []byte, 256),
-		seekStart: make(chan struct{}, 1),
 	}
 
 	client.hub.register <- client
-	client.seekStart <- struct{}{}
-
 	go client.sendMPDEvents()
 	go client.sendSeekUpdates()
 }
