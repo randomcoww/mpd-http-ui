@@ -50,6 +50,11 @@ type response struct {
 	Message string
 }
 
+type socketMessage struct {
+	Name string `json:"mutation"`
+	Data interface{} `json:"value"`
+}
+
 
 func NewServer(listenUrl, mpdUrl, esUrl string) {
 
@@ -152,7 +157,7 @@ func (c *Client) sendStatusMessage() {
 		return
 	}
 
-	err = c.conn.WriteJSON(&mpd_event.AttrMessage{Data: attrs, Name: "status"})
+	err = c.conn.WriteJSON(&socketMessage{Data: attrs, Name: "status"})
 	if err != nil {
 		fmt.Printf("Failed to write message %s\n", err)
 		return
@@ -165,7 +170,7 @@ func (c *Client) sendCurrentSongMessage() {
 		return
 	}
 
-	err = c.conn.WriteJSON(&mpd_event.AttrMessage{Data: attrs, Name: "currentsong"})
+	err = c.conn.WriteJSON(&socketMessage{Data: attrs, Name: "currentsong"})
 	if err != nil {
 		fmt.Printf("Failed to write message %s\n", err)
 		return
@@ -178,7 +183,7 @@ func (c *Client) sendPlaylistMessage() {
 		return
 	}
 
-	err = c.conn.WriteJSON(&mpd_event.AttrsMessage{Data: attrs, Name: "playlist"})
+	err = c.conn.WriteJSON(&socketMessage{Data: attrs, Name: "playlist"})
 	if err != nil {
 		fmt.Printf("Failed to write message %s\n", err)
 		return
@@ -211,7 +216,7 @@ func (c *Client) sendSeekMessage() {
 			seek = 0.0
 		}
 
-		c.conn.WriteJSON(&mpd_event.StringMessage{Data: strconv.FormatFloat(seek, 'f', 1, 32), Name: "seek"})
+		c.conn.WriteJSON(&socketMessage{Data: seek, Name: "seek"})
 	}
 }
 
