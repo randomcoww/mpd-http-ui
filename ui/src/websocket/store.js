@@ -37,8 +37,9 @@ const websocket = {
       state.socket.reconnectError = true
     },
     playlist (state, message) {
-      // console.info(message.value)
-      state.socket.playlist = message.value
+      message.value.map(v => {
+        state.socket.playlist.splice(v.Pos, 1, v)
+      })
     },
     status (state, message) {
       console.info(message.value)
