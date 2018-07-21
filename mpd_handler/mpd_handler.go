@@ -9,7 +9,6 @@ import (
 	"time"
 	"errors"
 	mpd "github.com/fhs/gompd/mpd"
-	// mpd "local/gompd/mpd"
 )
 
 type MpdClient struct {
@@ -19,8 +18,18 @@ type MpdClient struct {
 	conn *mpd.Client
 	proto string
 	addr string
-
 	Ready chan struct{}
+}
+
+
+type MessageAttrs struct {
+	Name string `json:"mutation"`
+	Data []mpd.Attrs `json:"value"`
+}
+
+type MessageAttr struct {
+	Name string `json:"mutation"`
+	Data mpd.Attrs `json:"value"`
 }
 
 
