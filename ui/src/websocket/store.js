@@ -5,7 +5,8 @@ const defaults = {
     status: {},
     playlist: null,
     currentsong: {},
-    seek: 0
+    elapsed: null,
+    duration: null
   }
 }
 
@@ -46,8 +47,11 @@ const websocket = {
       state.socket.currentsong = message.value
     },
     seek (state, message) {
-      // console.info(message.value)
-      state.socket.seek = message.value
+      state.socket.elapsed = message.value[0]
+      state.socket.duration = message.value[1]
+    },
+    elapsed (state, message) {
+      state.socket.elapsed = message.value
     }
   }
 }
