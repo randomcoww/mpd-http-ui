@@ -10,7 +10,8 @@ import (
 	"github.com/gorilla/websocket"
 	"net/http"
 	"strconv"
-	mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
+	// mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
+	mpd_handler "local/mpd_handler"
 	mpd_event "github.com/randomcoww/go-mpd-es/mpd_event"
 	es_handler "github.com/randomcoww/go-mpd-es/es_handler"
 )
@@ -152,7 +153,7 @@ func (h *Hub) eventBroadcaster() {
 
 
 func (c *Client) sendStatusMessage() {
-	attrs, err := mpdClient.Status()
+	attrs, err := mpdClient.Conn.Status()
 	if err != nil {
 		return
 	}
@@ -165,7 +166,7 @@ func (c *Client) sendStatusMessage() {
 }
 
 func (c *Client) sendCurrentSongMessage() {
-	attrs, err := mpdClient.CurrentSong()
+	attrs, err := mpdClient.Conn.CurrentSong()
 	if err != nil {
 		return
 	}
@@ -178,7 +179,7 @@ func (c *Client) sendCurrentSongMessage() {
 }
 
 func (c *Client) sendPlaylistMessage() {
-	attrs, err := mpdClient.QueryPlaylistItems(-1, -1)
+	attrs, err := mpdClient.Conn.PlaylistInfo(-1, -1)
 	if err != nil {
 		return
 	}
@@ -191,13 +192,15 @@ func (c *Client) sendPlaylistMessage() {
 }
 
 func (c *Client) sendSeekMessage() {
-	attrs, err := mpdClient.Status()
+	attrs, err := mpdClient.Conn.Status()
 	if err != nil {
 		return
 	}
 
 	switch attrs["state"] {
 	case "play":
+		message := make([]float64, 2)
+
 		elapsed, err := strconv.ParseFloat(attrs["elapsed"], 32)
 		if err != nil {
 			return
@@ -208,20 +211,34 @@ func (c *Client) sendSeekMessage() {
 			return
 		}
 
-		var seek float64
+		message[0] = elapsed
+		message[1] = duration
 
-		if duration > 0 {
-			seek = (elapsed / duration) * 100
-		} else {
-			seek = 0.0
-		}
-
-		c.conn.WriteJSON(&socketMessage{Data: seek, Name: "seek"})
+		c.conn.WriteJSON(&socketMessage{Data: message, Name: "seek"})
 	}
 }
 
 
-func (c *Client) sendMPDEvents() {
+func (c *Client) readSocketEvents() {
+	for {
+		v := &socketMessage{}
+
+		err := c.conn.ReadJSON(v)
+		if err != nil {
+			time.Sleep(1000 * time.Millisecond)
+			continue
+		}
+
+		switch v.Name {
+		case "seek":
+			t := int64(v.Data.(float64) * 1000000000)
+			mpdClient.Conn.SeekCur(time.Duration(t), false)
+		}
+	}
+}
+
+
+func (c *Client) writeSocketEvents() {
 	for {
 		select {
 		case message, ok := <-c.send:
@@ -278,7 +295,8 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	}
 
 	client.hub.register <- client
-	go client.sendMPDEvents()
+	go client.writeSocketEvents()
+	go client.readSocketEvents()
 }
 
 
@@ -296,7 +314,7 @@ func queryPlaylistItems(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	fmt.Printf("Query playlist items %s\n", params)
 
-	attrs, err := mpdClient.QueryPlaylistItems(
+	attrs, err := mpdClient.Conn.PlaylistInfo(
 		parseNum(params["start"]),
 		parseNum(params["end"]))
 	w.Header().Set("Content-Type", "application/json")
@@ -314,7 +332,7 @@ func queryPlaylistItems(w http.ResponseWriter, r *http.Request) {
 func queryStatus(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Query status\n")
 
-	attrs, err := mpdClient.Status()
+	attrs, err := mpdClient.Conn.Status()
 	w.Header().Set("Content-Type", "application/json")
 
 	if err == nil {
@@ -331,7 +349,7 @@ func queryStatus(w http.ResponseWriter, r *http.Request) {
 func currentSong(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Query current song\n")
 
-	attrs, err := mpdClient.CurrentSong()
+	attrs, err := mpdClient.Conn.CurrentSong()
 	w.Header().Set("Content-Type", "application/json")
 
 	if err == nil {
@@ -349,7 +367,7 @@ func movePlaylistItems(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	fmt.Printf("Move playlist items %s\n", params)
 
-	err := mpdClient.MovePlaylistItems(
+	err := mpdClient.Conn.Move(
 		parseNum(params["start"]),
 		parseNum(params["end"]),
 		parseNum(params["moveto"]))
@@ -368,7 +386,7 @@ func addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	fmt.Printf("Add to playlist %s\n", params)
 
-	err := mpdClient.AddToPlaylist(
+	err := mpdClient.Conn.Add(
 		params["path"])
 	w.Header().Set("Content-Type", "application/json")
 
@@ -385,7 +403,7 @@ func deletePlaylistItems(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	fmt.Printf("Delete playlist items %s\n", params)
 
-	err := mpdClient.DeletePlaylistItems(
+	err := mpdClient.Conn.Delete(
 		parseNum(params["start"]),
 		parseNum(params["end"]))
 	w.Header().Set("Content-Type", "application/json")
@@ -402,7 +420,7 @@ func deletePlaylistItems(w http.ResponseWriter, r *http.Request) {
 func clearPlaylist(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Clear playlist items\n")
 
-	err := mpdClient.ClearPlaylist()
+	err := mpdClient.Conn.Clear()
 	w.Header().Set("Content-Type", "application/json")
 
 	if err == nil {
