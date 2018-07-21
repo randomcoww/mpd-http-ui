@@ -185,6 +185,36 @@ func (c *Client) sendPlaylistMessage() {
 	}
 }
 
+func (c *Client) sendSeekMessage() {
+	attrs, err := mpdClient.Status()
+	if err != nil {
+		return
+	}
+
+	switch attrs["state"] {
+	case "play":
+		elapsed, err := strconv.ParseFloat(attrs["elapsed"], 32)
+		if err != nil {
+			return
+		}
+
+		duration, err := strconv.ParseFloat(attrs["duration"], 32)
+		if err != nil {
+			return
+		}
+
+		var seek float64
+
+		if duration > 0 {
+			seek = (elapsed / duration) * 100
+		} else {
+			seek = 0.0
+		}
+
+		c.conn.WriteJSON(&mpd_event.StringMessage{Data: strconv.FormatFloat(seek, 'f', 1, 32), Name: "seek"})
+	}
+}
+
 
 func (c *Client) sendMPDEvents() {
 	for {
@@ -211,32 +241,7 @@ func (c *Client) sendMPDEvents() {
 			}
 
 		case <- time.After(1000 * time.Millisecond):
-			attrs, err := mpdClient.Status()
-			if err != nil {
-				continue
-			}
-
-			if attrs["state"] == "play" {
-				elapsed, err := strconv.ParseFloat(attrs["elapsed"], 32)
-				if err != nil {
-					elapsed = 0.0
-				}
-
-				duration, err := strconv.ParseFloat(attrs["duration"], 32)
-				if err != nil {
-					duration = 0.0
-				}
-
-				var seek float64
-
-				if duration > 0 {
-					seek = (elapsed / duration) * 100
-				} else {
-					seek = 0.0
-				}
-
-				c.conn.WriteJSON(&mpd_event.StringMessage{Data: strconv.FormatFloat(seek, 'f', 1, 32), Name: "seek"})
-			}
+			c.sendSeekMessage()
 		}
 	}
 }
