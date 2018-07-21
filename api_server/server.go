@@ -78,46 +78,14 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 	r.HandleFunc("/healthcheck", healthCheck).
 		Methods("GET")
 
-	r.HandleFunc("/playlist/items", queryPlaylistItems).
-		Queries("start", "{start}").
-		Queries("end", "{end}").
-		Methods("GET")
-
-	r.HandleFunc("/status", queryStatus).
-		Methods("GET")
-
-	r.HandleFunc("/currentsong", currentSong).
-		Methods("GET")
-
 	r.HandleFunc("/database/search", search).
 		Queries("q", "{query}").
 		Methods("GET")
-
-	r.HandleFunc("/playlist/items", movePlaylistItems).
-		Queries("start", "{start}").
-		Queries("end", "{end}").
-		Queries("pos", "{moveto}").
-		Methods("PUT")
-
-	r.HandleFunc("/playlist/items", deletePlaylistItems).
-		Queries("start", "{start}").
-		Queries("end", "{end}").
-		Methods("DELETE")
-
-	r.HandleFunc("/playlist", addToPlaylist).
-		Queries("path", "{path}").
-		Methods("PUT")
-
-	r.HandleFunc("/playlist", clearPlaylist).
-		Methods("DELETE")
 
 	// websocket handler
 	r.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		serveWs(hub, w, r)
 	})
-
-	// websocket test
-	r.HandleFunc("/hometest", serveHome)
 
 	// wait backend start
 	<-mpdClient.Ready
@@ -177,8 +145,8 @@ func (c *Client) sendCurrentSongMessage() {
 	}
 }
 
-func (c *Client) sendPlaylistMessage() {
-	attrs, err := mpdClient.Conn.PlaylistInfo(-1, -1)
+func (c *Client) sendPlaylistMessage(start, end int) {
+	attrs, err := mpdClient.Conn.PlaylistInfo(start, end)
 	if err != nil {
 		return
 	}
@@ -232,6 +200,17 @@ func (c *Client) readSocketEvents() {
 		case "seek":
 			t := int64(v.Data.(float64) * 1000000000)
 			mpdClient.Conn.SeekCur(time.Duration(t), false)
+
+		case "playlist":
+			d := v.Data.([]interface{})
+			start := int(d[0].(float64))
+			end := int(d[1].(float64))
+      // respond with playlist
+			c.sendPlaylistMessage(start, end)
+
+		case "currentsong":
+      // respond with current song
+			c.sendCurrentSongMessage()
 		}
 	}
 }
@@ -257,7 +236,7 @@ func (c *Client) writeSocketEvents() {
 					c.sendStatusMessage()
 
 				case "playlist":
-					c.sendPlaylistMessage()
+					c.sendPlaylistMessage(-1, -1)
 				}
 			}
 
@@ -308,128 +287,6 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response{"ok"})
 }
-
-func queryPlaylistItems(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	fmt.Printf("Query playlist items %s\n", params)
-
-	attrs, err := mpdClient.Conn.PlaylistInfo(
-		parseNum(params["start"]),
-		parseNum(params["end"]))
-	w.Header().Set("Content-Type", "application/json")
-
-	if err == nil {
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(attrs)
-	} else {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		json.NewEncoder(w).Encode(response{err.Error()})
-	}
-}
-
-
-func queryStatus(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("Query status\n")
-
-	attrs, err := mpdClient.Conn.Status()
-	w.Header().Set("Content-Type", "application/json")
-
-	if err == nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(attrs)
-	} else {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		json.NewEncoder(w).Encode(response{err.Error()})
-	}
-}
-
-
-func currentSong(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("Query current song\n")
-
-	attrs, err := mpdClient.Conn.CurrentSong()
-	w.Header().Set("Content-Type", "application/json")
-
-	if err == nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(attrs)
-	} else {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		json.NewEncoder(w).Encode(response{err.Error()})
-	}
-}
-
-
-func movePlaylistItems(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	fmt.Printf("Move playlist items %s\n", params)
-
-	err := mpdClient.Conn.Move(
-		parseNum(params["start"]),
-		parseNum(params["end"]),
-		parseNum(params["moveto"]))
-	w.Header().Set("Content-Type", "application/json")
-
-	if err == nil {
-		w.WriteHeader(http.StatusNoContent)
-	} else {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		json.NewEncoder(w).Encode(response{err.Error()})
-	}
-}
-
-
-func addToPlaylist(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	fmt.Printf("Add to playlist %s\n", params)
-
-	err := mpdClient.Conn.Add(
-		params["path"])
-	w.Header().Set("Content-Type", "application/json")
-
-	if err == nil {
-		w.WriteHeader(http.StatusNoContent)
-	} else {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		json.NewEncoder(w).Encode(response{err.Error()})
-	}
-}
-
-
-func deletePlaylistItems(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	fmt.Printf("Delete playlist items %s\n", params)
-
-	err := mpdClient.Conn.Delete(
-		parseNum(params["start"]),
-		parseNum(params["end"]))
-	w.Header().Set("Content-Type", "application/json")
-
-	if err == nil {
-		w.WriteHeader(http.StatusNoContent)
-	} else {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		json.NewEncoder(w).Encode(response{err.Error()})
-	}
-}
-
-
-func clearPlaylist(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("Clear playlist items\n")
-
-	err := mpdClient.Conn.Clear()
-	w.Header().Set("Content-Type", "application/json")
-
-	if err == nil {
-		w.WriteHeader(http.StatusNoContent)
-	} else {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		json.NewEncoder(w).Encode(response{err.Error()})
-	}
-}
-
 
 func search(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
