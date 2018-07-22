@@ -1,7 +1,7 @@
 <template lang="pug">
 v-card-text
   v-layout(row wrap style="align-items: center;")
-    template(v-for="playlistitem in playlistitems || initialplaylistitems")
+    template(v-for="playlistitem in playlistitems")
       v-flex(d-flex xs12 sm12 md4)
         | {{ playlistitem.Artist }}
       v-flex(d-flex xs12 sm12 md8)
@@ -13,34 +13,15 @@ v-card-text
 </template>
 
 <script>
-import axios from 'axios'
-
 export default {
-  data () {
-    return {
-      initialplaylistitems: [],
-      errored: false
-    }
-  },
-
   computed: {
     playlistitems () {
       return this.$store.state.websocket.socket.playlist
     }
   },
 
-  mounted () {
-    axios.get('http://localhost:3000/playlist/items', {
-      params: {
-        start: -1,
-        end: -1
-      }
-    }).then(response => {
-      this.initialplaylistitems = response.data
-    }).catch(error => {
-      console.log(error)
-      this.errored = true
-    })
+  created () {
+    this.$socket.sendObj({ mutation: 'playlist', value: [-1, -1] })
   }
 }
 </script>
