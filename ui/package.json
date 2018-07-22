@@ -20,6 +20,7 @@
     "vue": "^2.5.2",
     "vue-native-websocket": "^2.0.8",
     "vue-router": "^3.0.1",
+    "vue-virtual-scroll-list": "^1.2.7",
     "vuex-router-sync": "^5.0.0"
   },
   "devDependencies": {

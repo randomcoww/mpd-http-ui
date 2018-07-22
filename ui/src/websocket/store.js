@@ -3,7 +3,8 @@ const defaults = {
     isConnected: false,
     reconnectError: false,
     status: {},
-    playlist: null,
+    playlist: [],
+    search: [],
     currentsong: {},
     elapsed: null,
     duration: null
@@ -36,8 +37,9 @@ const websocket = {
       state.socket.reconnectError = true
     },
     playlist (state, message) {
-      // console.info(message.value)
-      state.socket.playlist = message.value
+      message.value.map(v => {
+        state.socket.playlist.splice(v.Pos, 1, v)
+      })
     },
     status (state, message) {
       console.info(message.value)
@@ -49,6 +51,9 @@ const websocket = {
     seek (state, message) {
       state.socket.elapsed = message.value[0]
       state.socket.duration = message.value[1]
+    },
+    search (state, message) {
+      state.socket.search = message.value
     },
     elapsed (state, message) {
       state.socket.elapsed = message.value
