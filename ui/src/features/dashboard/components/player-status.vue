@@ -5,7 +5,9 @@ v-card
       v-flex.text-xs-left(xs12 sm12 md4 title)
         | {{ currentsong.Artist }}
       v-flex.text-xs-right(xs12 sm12 md8 title)
-        | {{ currentsong.Album }}/{{ currentsong.Title }}
+        | {{ currentsong.Album | 'No Album' }}/{{ currentsong.Title }}
+      v-flex.text-xs-left(xs12 sm12 md12)
+        | {{ currentsong.file }}
   v-card-text
     v-slider(
       :max="seek_duration"
