@@ -3,15 +3,18 @@ v-card.playlist
   v-card-title
     .title Playlist
   v-card-text
-    virtual-list(:size="64" :remain="this.buffer" :bench="this.bench" :onscroll="onscroll" :tobottom="tobottom" :totop="totop")
-      ul(v-for="playlistitem in playlistitems")
+    virtual-list(:size="64" :remain="this.buffer" :onscroll="onscroll" :tobottom="tobottom" :totop="totop")
+      ul(v-for="(playlistitem, index) in playlistitems" :index="index" :key="playlistitem.Id")
         v-flex(d-flex)
           v-layout(align-center justify-center row fill-height)
-            v-flex(d-flex xs12 sm12 md4)
+            v-flex.text-xs-left(d-flex xs1 sm1 md1)
+              | {{ playlistitem.Pos }}
+            v-flex(d-flex xs12 sm12 md3)
               | {{ playlistitem.Artist }}
             v-flex(d-flex xs12 sm12 md8)
               v-layout(style="align-items: center;")
-                v-flex.text-xs-left(md10) {{ playlistitem.Title }}
+                v-flex.text-xs-left(md10)
+                  | {{ playlistitem.Title }}
                 v-flex.text-xs-left(md2)
                   v-btn(flat icon color="primary")
                     v-icon delete
@@ -32,26 +35,33 @@ export default {
       end: 40,
       buffer: 12,
       bufferedStart: 0,
-      bufferedEnd: 0
+      bufferedEnd: 40
     }
   },
 
   computed: {
+    playlistversion () {
+      return this.$store.state.websocket.socket.version
+    },
     playlistitems () {
       return this.$store.state.websocket.socket.playlist
     }
   },
 
+  watch: {
+    playlistversion: function () {
+      this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.start, this.end] })
+    }
+  },
+
   created () {
-    let end = this.end + this.bench
-    this.$socket.sendObj({ mutation: 'playlist', value: [this.start, end] })
+    this.$socket.sendObj({ mutation: 'playlistupdate', value: [0, this.end] })
   },
 
   methods: {
     tobottom () {
       let end = this.end + this.bench
-      console.info('request', this.end, end)
-      this.$socket.sendObj({ mutation: 'playlist', value: [this.end, end] })
+      this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.end, end] })
     },
 
     totop () {
@@ -59,23 +69,38 @@ export default {
       if (start < 0) {
         start = 0
       }
-      console.info('request', start, this.start)
-      this.$socket.sendObj({ mutation: 'playlist', value: [start, this.start] })
+      this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, this.start] })
     },
 
+    // playlist may have updated - refresh view as they become visible
     onscroll (event, data) {
       this.start = data['start']
       this.end = data['end']
 
-      if (
-        this.start > this.bufferedEnd - this.buffer ||
-        this.end < this.bufferedStart + this.buffer
-      ) {
-        this.bufferedStart = this.start
-        this.bufferedEnd = this.end
+      // scroll down refresh
+      if (this.end > this.bufferedEnd) {
+        // console.info('request', this.bufferedEnd, this.end)
+        let start = this.bufferedEnd
+        if (start < this.start) {
+          start = this.start
+        }
 
-        console.info('request', this.start, this.end)
-        this.$socket.sendObj({ mutation: 'playlist', value: [this.start, this.end] })
+        this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, this.end] })
+
+        this.bufferedStart = start
+        this.bufferedEnd = this.end
+      // scroll up refresh
+      } else if (this.start < this.bufferedStart) {
+        // console.info('request', this.start, this.bufferedStart)
+        let end = this.bufferedStart
+        if (end > this.end) {
+          end = this.end
+        }
+
+        this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.start, end] })
+
+        this.bufferedStart = this.start
+        this.bufferedEnd = end
       }
     }
   }
@@ -83,5 +108,4 @@ export default {
 </script>
 
 <style lang="stylus">
-
 </style>
