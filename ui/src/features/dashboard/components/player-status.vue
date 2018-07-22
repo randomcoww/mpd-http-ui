@@ -3,9 +3,9 @@ v-card
   v-card-title
     v-layout(row wrap style="align-items: center;")
       v-flex.text-xs-left(xs12 sm12 md4 title)
-        | {{ currentsong.Artist }}
+        | {{ currentsong.Artist | 'No Artist' }}
       v-flex.text-xs-right(xs12 sm12 md8 title)
-        | {{ currentsong.Album | 'No Album' }}/{{ currentsong.Title }}
+        | {{ currentsong.Album | 'No Album' }}/{{ currentsong.Title | 'No Title' }}
       v-flex.text-xs-left(xs12 sm12 md12)
         | {{ currentsong.file }}
   v-card-text
@@ -34,7 +34,6 @@ v-card
 </template>
 
 <script>
-
 export default {
   data () {
     return {
@@ -64,18 +63,14 @@ export default {
 
   methods: {
     onchange (value) {
-      console.info('slider_changed', value)
-
       this.dragStartValue = null
       this.$socket.sendObj({ mutation: 'seek', value: value })
       this.$store.commit('elapsed', { value: value })
     },
     onmousedown () {
-      console.info('drag_start')
       this.dragStartValue = this.$store.state.websocket.socket.elapsed
     },
     onmouseup () {
-      console.info('drag_end')
       this.dragStartValue = null
     }
   }
