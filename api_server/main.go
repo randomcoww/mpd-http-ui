@@ -14,7 +14,6 @@ var (
 	esUrl = flag.String("esurl", "http://localhost:9200", "Elasticsearch URL")
 )
 
-
 func main() {
 	flag.Parse()
 

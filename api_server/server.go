@@ -202,6 +202,14 @@ func (c *Client) sendSearchMessage(query string, size int) {
 
 
 func (c *Client) readSocketEvents() {
+
+	defer func() {
+		r := recover()
+		if r != nil {
+			fmt.Printf("Recovered %s\n", r)
+		}
+	}()
+
 	for {
 		v := &socketMessage{}
 
@@ -215,6 +223,7 @@ func (c *Client) readSocketEvents() {
 		case "seek":
 			t := int64(v.Data.(float64) * 1000000000)
 			mpdClient.Conn.SeekCur(time.Duration(t), false)
+			c.sendSeekMessage()
 
 		case "playlist":
 			d := v.Data.([]interface{})
@@ -239,6 +248,14 @@ func (c *Client) readSocketEvents() {
 
 
 func (c *Client) writeSocketEvents() {
+
+	defer func() {
+		r := recover()
+		if r != nil {
+			fmt.Printf("Recovered %s\n", r)
+		}
+	}()
+
 	for {
 		select {
 		case message, ok := <-c.send:
@@ -258,7 +275,7 @@ func (c *Client) writeSocketEvents() {
 					c.sendStatusMessage()
 
 				case "playlist":
-					c.sendPlaylistMessage(-1, -1)
+					// c.sendPlaylistMessage(-1, -1)
 				}
 			}
 
