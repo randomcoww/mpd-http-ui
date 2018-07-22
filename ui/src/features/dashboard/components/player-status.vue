@@ -1,27 +1,34 @@
 <template lang="pug">
-v-card-text
-  v-slider(
-    :max="seek_duration"
-    :value="seek_elaspsed"
-    v-on:mousedown="onmousedown"
-    v-on:click="onmouseup"
-    v-on:change="onchange")
-  v-layout(row wrap style="align-items: center;")
-    v-flex(d-flex xs3 sm2 md1)
-      v-btn(flat icon color="primary")
-        v-icon fast_rewind
-    v-flex(d-flex xs3 sm2 md1)
-      v-btn(flat icon color="primary")
-        v-icon play_arrow
-    v-flex(d-flex xs3 sm2 md1)
-      v-btn(flat icon color="primary")
-        v-icon pause
-    v-flex(d-flex xs3 sm2 md1)
-      v-btn(flat icon color="primary")
-        v-icon stop
-    v-flex(d-flex xs3 sm2 md1)
-      v-btn(flat icon color="primary")
-        v-icon fast_forward
+v-card
+  v-card-title
+    v-layout(row wrap style="align-items: center;")
+      v-flex.text-xs-left(xs12 sm12 md4 title)
+        | {{ currentsong.Artist }}
+      v-flex.text-xs-right(xs12 sm12 md8 title)
+        | {{ currentsong.Album }}/{{ currentsong.Title }}
+  v-card-text
+    v-slider(
+      :max="seek_duration"
+      :value="seek_elaspsed"
+      v-on:mousedown="onmousedown"
+      v-on:click="onmouseup"
+      v-on:change="onchange")
+    v-layout(row wrap style="align-items: center;")
+      v-flex(d-flex xs3 sm2 md1)
+        v-btn(flat icon color="primary")
+          v-icon fast_rewind
+      v-flex(d-flex xs3 sm2 md1)
+        v-btn(flat icon color="primary")
+          v-icon play_arrow
+      v-flex(d-flex xs3 sm2 md1)
+        v-btn(flat icon color="primary")
+          v-icon pause
+      v-flex(d-flex xs3 sm2 md1)
+        v-btn(flat icon color="primary")
+          v-icon stop
+      v-flex(d-flex xs3 sm2 md1)
+        v-btn(flat icon color="primary")
+          v-icon fast_forward
 </template>
 
 <script>
@@ -34,6 +41,9 @@ export default {
   },
 
   computed: {
+    currentsong () {
+      return this.$store.state.websocket.socket.currentsong
+    },
     seek_elaspsed () {
       if (this.dragStartValue != null) {
         return this.dragStartValue
@@ -44,6 +54,10 @@ export default {
     seek_duration () {
       return this.$store.state.websocket.socket.duration
     }
+  },
+
+  created () {
+    this.$socket.sendObj({ mutation: 'currentsong' })
   },
 
   methods: {
