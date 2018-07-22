@@ -61,15 +61,11 @@ export default {
   methods: {
     tobottom () {
       let end = this.end + this.bench
+      // console.info('request', this.end, end)
       this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.end, end] })
     },
 
     totop () {
-      let start = this.start - this.bench
-      if (start < 0) {
-        start = 0
-      }
-      this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, this.start] })
     },
 
     // playlist may have updated - refresh view as they become visible
@@ -79,28 +75,31 @@ export default {
 
       // scroll down refresh
       if (this.end > this.bufferedEnd) {
-        // console.info('request', this.bufferedEnd, this.end)
         let start = this.bufferedEnd
         if (start < this.start) {
           start = this.start
         }
 
+        // console.info('request', start, this.end)
         this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, this.end] })
 
-        this.bufferedStart = start
+        this.bufferedStart = this.start
         this.bufferedEnd = this.end
+        return
+      }
+
       // scroll up refresh
-      } else if (this.start < this.bufferedStart) {
-        // console.info('request', this.start, this.bufferedStart)
+      if (this.start < this.bufferedStart) {
         let end = this.bufferedStart
         if (end > this.end) {
           end = this.end
         }
 
+        // console.info('request', this.start, end)
         this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.start, end] })
 
+        this.bufferedEnd = this.end
         this.bufferedStart = this.start
-        this.bufferedEnd = end
       }
     }
   }
