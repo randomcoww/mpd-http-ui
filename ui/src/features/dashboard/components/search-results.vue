@@ -6,20 +6,21 @@ v-card.searchresults
     v-text-field(label="Search..." v-model.lazy="databasequery")
     virtual-list(:size="this.size" :remain="this.buffer" :onscroll="onscroll" :tobottom="tobottom")
       div(v-for="(searchresult, index) in searchresults" :index="index" :key="searchresult.file")
-        draggable(v-model="searchresults" @end="onmoved" :options="{group: {name: 'playlistitems'}}" :id="searchresult.file")
+        draggable(v-model="searchresults" @end="onmoved" :options="{group: 'playlistitems'}" :id="searchresult.file")
           v-flex(d-flex :style="style")
-            v-layout(row wrap style="align-items: center;")
+            v-container
+              v-layout(row wrap style="align-items: center;")
 
-              v-flex(d-flex xs10 sm10 md10)
-                v-flex(d-flex xs12 sm12 md4)
-                  | {{ searchresult.artist || 'No Artist' }}
-                v-flex.text-xs-left(md8)
-                  | {{ searchresult.title || 'No Title' }}
+                v-flex(d-flex xs10 sm10 md10)
+                  v-flex(d-flex xs12 sm12 md4)
+                    | {{ searchresult.artist || 'No Artist' }}
+                  v-flex.text-xs-left(md8)
+                    | {{ searchresult.title || 'No Title' }}
 
-              v-flex(d-flex xs2 sm2 md2)
-                v-layout(style="align-items: center;")
-                  v-btn(flat icon color="primary" @click="addpath(searchresult.file, -1)")
-                    v-icon add
+                v-flex(d-flex xs2 sm2 md2)
+                  v-layout(style="align-items: center;")
+                    v-btn(flat icon color="primary" @click="addpath(searchresult.file, -1)")
+                      v-icon add
 </template>
 
 <script>
@@ -66,10 +67,14 @@ export default {
   methods: {
     addpath (path, position) {
       console.info('addpath', path, position)
-      this.$socket.sendObj({ mutation: 'addpath', value: [path, parseInt(position)] })
+
+      position = parseInt(position)
+      if (Number.isInteger(position)) {
+        this.$socket.sendObj({ mutation: 'addpath', value: [path, position] })
+      }
     },
 
-    onmoved (event, data) {
+    onmoved (event) {
       this.addpath(event.from.id, event.to.id)
     },
 
