@@ -312,6 +312,13 @@ func (c *Client) readSocketEvents() {
 			d := int(v.Data.(float64))
 			mpdClient.Conn.DeleteID(d)
 
+		case "addpath":
+			d := v.Data.([]interface{})
+			// fmt.Printf("Move %s\n", d)
+			path := d[0].(string)
+			position := int(d[1].(float64))
+			mpdClient.Conn.AddID(path, position)
+
 		case "search":
 			d := v.Data.([]interface{})
 			query := d[0].(string)
