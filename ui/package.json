@@ -17,6 +17,7 @@
     "staticpath": "dist"
   },
   "dependencies": {
+    "lodash": "^4.17.10",
     "vue": "^2.5.2",
     "vue-native-websocket": "^2.0.8",
     "vue-router": "^3.0.1",

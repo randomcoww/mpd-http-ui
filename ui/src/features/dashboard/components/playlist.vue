@@ -3,12 +3,12 @@ v-card.playlist
   v-card-title
     .title Playlist
   v-card-text
-    virtual-list(:size="64" :remain="this.buffer" :onscroll="onscroll" :tobottom="tobottom" :totop="totop")
-      ul(v-for="(playlistitem, index) in playlistitems" :index="index" :key="playlistitem.Id")
-        v-flex(d-flex)
+    virtual-list(:size="this.size" :remain="this.buffer" :onscroll="onscroll" :tobottom="tobottom" :totop="totop")
+      ul(v-for="(playlistitem, index) in playlistitems" :index="index" :key="playlistitem.Pos")
+        v-flex(d-flex :style="style")
           v-layout(align-center justify-center row fill-height)
             v-flex.text-xs-left(d-flex xs1 sm1 md1)
-              | {{ playlistitem.Pos }}
+              | {{ index }}
             v-flex(d-flex xs12 sm12 md3)
               | {{ playlistitem.Artist }}
             v-flex(d-flex xs12 sm12 md8)
@@ -22,6 +22,7 @@ v-card.playlist
 
 <script>
 import VirtualList from 'vue-virtual-scroll-list'
+import _ from 'lodash'
 
 export default {
   components: {
@@ -30,10 +31,10 @@ export default {
 
   data () {
     return {
-      bench: 100,
+      size: 40,
       start: 0,
       end: 40,
-      buffer: 12,
+      buffer: 20,
       bufferedStart: 0,
       bufferedEnd: 40
     }
@@ -45,11 +46,21 @@ export default {
     },
     playlistitems () {
       return this.$store.state.websocket.socket.playlist
+    },
+    style () {
+      return {
+        'height': this.size + 'px'
+      }
     }
   },
 
   watch: {
     playlistversion: function () {
+      if (this.end < 0) {
+        this.end = 40
+        this.bufferedEnd = 40
+      }
+      console.info('playlistversion', this.start, this.end)
       this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.start, this.end] })
     }
   },
@@ -60,8 +71,7 @@ export default {
 
   methods: {
     tobottom () {
-      let end = this.end + this.bench
-      // console.info('request', this.end, end)
+      let end = this.end + (this.buffer * 4)
       this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.end, end] })
     },
 
@@ -69,7 +79,7 @@ export default {
     },
 
     // playlist may have updated - refresh view as they become visible
-    onscroll (event, data) {
+    onscroll: _.debounce(function (event, data) {
       this.start = data['start']
       this.end = data['end']
 
@@ -80,28 +90,36 @@ export default {
           start = this.start
         }
 
-        // console.info('request', start, this.end)
-        this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, this.end] })
+        let end = this.end + this.buffer
+
+        console.info('down_request', start, end)
+        this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, end] })
 
         this.bufferedStart = this.start
-        this.bufferedEnd = this.end
+        this.bufferedEnd = end
         return
       }
 
       // scroll up refresh
       if (this.start < this.bufferedStart) {
+        // buffer start to avoid making many requests
+        let start = this.start - this.buffer
+        if (start < 0) {
+          start = 0
+        }
+
         let end = this.bufferedStart
         if (end > this.end) {
           end = this.end
         }
 
-        // console.info('request', this.start, end)
-        this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.start, end] })
+        console.info('up_request', start, end)
+        this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, end] })
 
+        this.bufferedStart = start
         this.bufferedEnd = this.end
-        this.bufferedStart = this.start
       }
-    }
+    }, 300)
   }
 }
 </script>
