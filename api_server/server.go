@@ -123,7 +123,7 @@ func (c *Client) sendStatusMessage() {
 
 	err = c.conn.WriteJSON(&socketMessage{Data: attrs, Name: "status"})
 	if err != nil {
-		fmt.Printf("Failed to write message %s\n", err)
+		fmt.Printf("Failed to write status message %s\n", err)
 		return
 	}
 }
@@ -136,7 +136,7 @@ func (c *Client) sendCurrentSongMessage() {
 
 	err = c.conn.WriteJSON(&socketMessage{Data: attrs, Name: "currentsong"})
 	if err != nil {
-		fmt.Printf("Failed to write message %s\n", err)
+		fmt.Printf("Failed to write currentsong message %s\n", err)
 		return
 	}
 }
@@ -174,7 +174,7 @@ func (c *Client) sendPlaylistMessage() {
   // send playlist and playlistlength
 	err = c.conn.WriteJSON(&socketMessage{Data: message, Name: "playlist"})
 	if err != nil {
-		fmt.Printf("Failed to write message %s\n", err)
+		fmt.Printf("Failed to write playlist message %s\n", err)
 		return
 	}
 }
@@ -188,7 +188,7 @@ func (c *Client) sendPlaylistUpdateMessage(start, end int) {
 
 	err = c.conn.WriteJSON(&socketMessage{Data: attrs, Name: "playlistupdate"})
 	if err != nil {
-		fmt.Printf("Failed to write message %s\n", err)
+		fmt.Printf("Failed to write playlistupdate message %s\n", err)
 		return
 	}
 }
@@ -234,7 +234,7 @@ func (c *Client) sendSearchMessage(query string, size int) {
 
 	err = c.conn.WriteJSON(&socketMessage{Data: result, Name: "search"})
 	if err != nil {
-		fmt.Printf("Failed to write message %s\n", err)
+		fmt.Printf("Failed to write search message %s\n", err)
 		return
 	}
 }
@@ -243,8 +243,15 @@ func (c *Client) sendSearchMessage(query string, size int) {
 func (c *Client) readSocketEvents() {
 
 	defer func() {
+		fmt.Printf("Close reader\n")
+		c.hub.unregister <- c
+		c.conn.Close()
+	}()
+
+	defer func() {
 		r := recover()
 		if r != nil {
+			time.Sleep(1000 * time.Millisecond)
 			fmt.Printf("Recovered %s\n", r)
 		}
 	}()
@@ -254,9 +261,12 @@ func (c *Client) readSocketEvents() {
 
 		err := c.conn.ReadJSON(v)
 		if err != nil {
-			// fmt.Printf("Error reading socket %s\n", err)
-			time.Sleep(1000 * time.Millisecond)
-			continue
+			fmt.Printf("Error reading socket %s\n", err)
+
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("error: %v", err)
+			}
+			break
 		}
 
 		switch v.Name {
@@ -333,33 +343,44 @@ func (c *Client) readSocketEvents() {
 func (c *Client) writeSocketEvents() {
 
 	defer func() {
+		fmt.Printf("Close writer\n")
+		c.conn.Close()
+	}()
+
+	defer func() {
 		r := recover()
 		if r != nil {
 			fmt.Printf("Recovered %s\n", r)
+			time.Sleep(1000 * time.Millisecond)
 		}
 	}()
 
 	for {
 		select {
 		case message, ok := <-c.send:
-			if ok {
-				switch string(message) {
-				case "player":
-					c.sendStatusMessage()
-					c.sendCurrentSongMessage()
+			if !ok {
+				// The hub closed the channel.
+				fmt.Printf("Hub closed the channel\n")
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
 
-				case "mixer":
-					c.sendStatusMessage()
+			switch string(message) {
+			case "player":
+				c.sendStatusMessage()
+				c.sendCurrentSongMessage()
 
-				case "options":
-					c.sendStatusMessage()
+			case "mixer":
+				c.sendStatusMessage()
 
-				case "outputs":
-					c.sendStatusMessage()
+			case "options":
+				c.sendStatusMessage()
 
-				case "playlist":
-					c.sendPlaylistMessage()
-				}
+			case "outputs":
+				c.sendStatusMessage()
+
+			case "playlist":
+				c.sendPlaylistMessage()
 			}
 
 		case <- time.After(1000 * time.Millisecond):
