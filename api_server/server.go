@@ -254,7 +254,7 @@ func (c *Client) readSocketEvents() {
 
 		err := c.conn.ReadJSON(v)
 		if err != nil {
-			fmt.Printf("Error reading socket %s\n", err)
+			// fmt.Printf("Error reading socket %s\n", err)
 			time.Sleep(1000 * time.Millisecond)
 			continue
 		}
@@ -275,6 +275,42 @@ func (c *Client) readSocketEvents() {
 		case "currentsong":
       // respond with current song
 			c.sendCurrentSongMessage()
+
+		case "playlistmove":
+			d := v.Data.([]interface{})
+			// fmt.Printf("Move %s\n", d)
+			start := int(d[0].(float64))
+			end := int(d[1].(float64))
+			position := int(d[2].(float64))
+			// fmt.Printf("Move %s %s %s\n")
+			if (start != position) {
+				mpdClient.Conn.Move(start, end, position)
+			}
+
+		// case "play":
+    //   // play current
+		// 	mpdClient.Conn.PlayID(-1)
+
+		case "playid":
+			// -1 for play current
+			d := int(v.Data.(float64))
+			mpdClient.Conn.PlayID(d)
+
+		case "stop":
+			mpdClient.Conn.Stop()
+
+		case "pause":
+			mpdClient.Conn.Pause(true)
+
+		case "playnext":
+			mpdClient.Conn.Next()
+
+		case "playprev":
+			mpdClient.Conn.Previous()
+
+		case "removeid":
+			d := int(v.Data.(float64))
+			mpdClient.Conn.DeleteID(d)
 
 		case "search":
 			d := v.Data.([]interface{})

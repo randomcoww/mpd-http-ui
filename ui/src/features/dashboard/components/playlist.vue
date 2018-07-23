@@ -4,30 +4,37 @@ v-card.playlist
     .title Playlist
   v-card-text
     virtual-list(:size="this.size" :remain="this.buffer" :onscroll="onscroll" :tobottom="tobottom")
-      ul(v-for="(playlistitem, index) in playlistitems" :index="index" :key="playlistitem.Pos")
-        v-flex(d-flex :style="style")
-          v-layout(align-center justify-center row fill-height)
-            v-flex(d-flex xs12 sm12 md4)
-              | {{ playlistitem.Artist }}
-            v-flex(d-flex xs12 sm12 md8)
-              v-layout(style="align-items: center;")
-                v-flex.text-xs-left(md9)
+      div(v-for="(playlistitem, index) in playlistitems" :index="index" :key="playlistitem.Pos")
+        draggable(v-model="playlistitems" @end="onmoved" :options="{group: 'playlistitems'}" :id="index")
+          v-flex(d-flex :style="style")
+            v-layout(row wrap style="align-items: center;")
+
+              v-flex(d-flex xs10 sm10 md10)
+                v-flex(d-flex xs1 sm1 md1)
+                  | {{ index }}
+                v-flex(d-flex xs12 sm12 md3)
+                  | {{ playlistitem.Artist }}
+                v-flex.text-xs-left(xs12 sm12 md8)
                   | {{ playlistitem.Title }}
-                v-flex.text-xs-left(md1)
-                  v-btn(flat icon color="primary")
+
+              v-flex(d-flex xs2 sm2 md2)
+                v-flex.text-xs-left(xs4)
+                  v-btn(flat icon color="primary" @click="playid(playlistitem.Id)")
                     v-icon play_arrow
-                v-flex.text-xs-left(md2)
-                  v-btn(flat icon color="primary")
+                v-flex.text-xs-left(xs8)
+                  v-btn(flat icon color="primary" @click="removeid(playlistitem.Id)")
                     v-icon delete
 </template>
 
 <script>
 import VirtualList from 'vue-virtual-scroll-list'
 import _ from 'lodash'
+import draggable from 'vuedraggable'
 
 export default {
   components: {
-    VirtualList
+    VirtualList,
+    draggable
   },
 
   data () {
@@ -42,16 +49,21 @@ export default {
       initialBuffer: 40,
       // save loaded state to refresh items
       bufferedStart: 0,
-      bufferedEnd: 0
+      bufferedEnd: 0,
+      drag: false
     }
   },
 
   computed: {
+    playlistitems: {
+      get: function () {
+        return this.$store.state.websocket.socket.playlist
+      },
+      set: function () {
+      }
+    },
     playlistversion () {
       return this.$store.state.websocket.socket.version
-    },
-    playlistitems () {
-      return this.$store.state.websocket.socket.playlist
     },
     style () {
       return {
@@ -75,6 +87,23 @@ export default {
   },
 
   methods: {
+    playid (id) {
+      this.$socket.sendObj({ mutation: 'playid', value: parseInt(id) })
+    },
+
+    removeid (id) {
+      this.$socket.sendObj({ mutation: 'removeid', value: parseInt(id) })
+    },
+
+    onmoved (event, data) {
+      // console.info(event)
+      let from = parseInt(event.from.id)
+      let to = parseInt(event.to.id)
+
+      console.info('moveitem', from, to)
+      this.$socket.sendObj({ mutation: 'playlistmove', value: [from, from + 1, to] })
+    },
+
     tobottom () {
       let end = this.end + (this.buffer * 4)
       this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.end, end] })
