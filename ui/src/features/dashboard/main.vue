@@ -1,21 +1,22 @@
 <template lang="pug">
-v-container.my-dashboard(
-  fluid
-  text-xs-center
-  v-bind:grid-list-sm="$vuetify.breakpoint.smAndDown"
-  v-bind:grid-list-lg="$vuetify.breakpoint.mdAndUp"
-)
-  v-layout(row wrap align-content-center)
-    v-flex(d-flex xs12 sm12 md6 height="100%")
-      v-layout(row wrap)
-        v-flex(d-flex xs12 sm12 md12)
-          player-status()
-        v-flex(d-flex xs12 sm12 md12)
-          playlist()
-    v-flex(d-flex xs12 sm12 md6 max-height="100%")
-      v-layout(row wrap)
-        v-flex(d-flex xs12 sm12 md12)
-          search-results()
+v-card(dark)
+  v-container.my-dashboard(
+    fluid
+    text-xs-center
+    v-bind:grid-list-sm="$vuetify.breakpoint.smAndDown"
+    v-bind:grid-list-lg="$vuetify.breakpoint.mdAndUp"
+  )
+    v-layout(row wrap align-content-center)
+      v-flex(d-flex xs12 sm12 md6 height="100%")
+        v-layout(row wrap)
+          v-flex(d-flex xs12 sm12 md12)
+            player-status()
+          v-flex(d-flex xs12 sm12 md12)
+            playlist()
+      v-flex(d-flex xs12 sm12 md6 max-height="100%")
+        v-layout(row wrap)
+          v-flex(d-flex xs12 sm12 md12)
+            search-results()
 </template>
 
 <script>

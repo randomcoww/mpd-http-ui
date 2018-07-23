@@ -141,13 +141,52 @@ func (c *Client) sendCurrentSongMessage() {
 	}
 }
 
-func (c *Client) sendPlaylistMessage(start, end int) {
+// respond to MPD playist event - return current playlist length
+func (c *Client) sendPlaylistMessage() {
+	attrs, err := mpdClient.Conn.Status()
+	if err != nil {
+		return
+	}
+
+	message := make([]int, 2)
+
+	playlist, err := strconv.Atoi(attrs["playlist"])
+	if err != nil {
+		return
+	}
+
+	playlistlength, err := strconv.Atoi(attrs["playlistlength"])
+	if err != nil {
+		return
+	}
+
+	message[0] = playlist
+	message[1] = playlistlength
+
+	// p, err := mpdClient.Conn.PlaylistInfo(-1, -1)
+	// if err != nil {
+	// 	return
+	// }
+	// for i, j := range p {
+	// 	fmt.Printf("%s %s %s\n", i, j)
+	// }
+
+  // send playlist and playlistlength
+	err = c.conn.WriteJSON(&socketMessage{Data: message, Name: "playlist"})
+	if err != nil {
+		fmt.Printf("Failed to write message %s\n", err)
+		return
+	}
+}
+
+// send playlist info
+func (c *Client) sendPlaylistUpdateMessage(start, end int) {
 	attrs, err := mpdClient.Conn.PlaylistInfo(start, end)
 	if err != nil {
 		return
 	}
 
-	err = c.conn.WriteJSON(&socketMessage{Data: attrs, Name: "playlist"})
+	err = c.conn.WriteJSON(&socketMessage{Data: attrs, Name: "playlistupdate"})
 	if err != nil {
 		fmt.Printf("Failed to write message %s\n", err)
 		return
@@ -215,6 +254,7 @@ func (c *Client) readSocketEvents() {
 
 		err := c.conn.ReadJSON(v)
 		if err != nil {
+			// fmt.Printf("Error reading socket %s\n", err)
 			time.Sleep(1000 * time.Millisecond)
 			continue
 		}
@@ -225,16 +265,52 @@ func (c *Client) readSocketEvents() {
 			mpdClient.Conn.SeekCur(time.Duration(t), false)
 			c.sendSeekMessage()
 
-		case "playlist":
+		case "playlistupdate":
 			d := v.Data.([]interface{})
 			start := int(d[0].(float64))
 			end := int(d[1].(float64))
       // respond with playlist
-			c.sendPlaylistMessage(start, end)
+			c.sendPlaylistUpdateMessage(start, end)
 
 		case "currentsong":
       // respond with current song
 			c.sendCurrentSongMessage()
+
+		case "playlistmove":
+			d := v.Data.([]interface{})
+			// fmt.Printf("Move %s\n", d)
+			start := int(d[0].(float64))
+			end := int(d[1].(float64))
+			position := int(d[2].(float64))
+			// fmt.Printf("Move %s %s %s\n")
+			if (start != position) {
+				mpdClient.Conn.Move(start, end, position)
+			}
+
+		// case "play":
+    //   // play current
+		// 	mpdClient.Conn.PlayID(-1)
+
+		case "playid":
+			// -1 for play current
+			d := int(v.Data.(float64))
+			mpdClient.Conn.PlayID(d)
+
+		case "stop":
+			mpdClient.Conn.Stop()
+
+		case "pause":
+			mpdClient.Conn.Pause(true)
+
+		case "playnext":
+			mpdClient.Conn.Next()
+
+		case "playprev":
+			mpdClient.Conn.Previous()
+
+		case "removeid":
+			d := int(v.Data.(float64))
+			mpdClient.Conn.DeleteID(d)
 
 		case "search":
 			d := v.Data.([]interface{})
@@ -275,7 +351,7 @@ func (c *Client) writeSocketEvents() {
 					c.sendStatusMessage()
 
 				case "playlist":
-					// c.sendPlaylistMessage(-1, -1)
+					c.sendPlaylistMessage()
 				}
 			}
 

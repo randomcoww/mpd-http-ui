@@ -7,7 +7,8 @@ const defaults = {
     search: [],
     currentsong: {},
     elapsed: null,
-    duration: null
+    duration: null,
+    version: null
   }
 }
 
@@ -37,12 +38,10 @@ const websocket = {
       state.socket.reconnectError = true
     },
     playlist (state, message) {
-      message.value.map(v => {
-        state.socket.playlist.splice(v.Pos, 1, v)
-      })
+      state.socket.version = message.value[0]
+      state.socket.playlist.splice(message.value[1])
     },
     status (state, message) {
-      console.info(message.value)
       state.socket.status = message.value
     },
     currentsong (state, message) {
@@ -57,6 +56,12 @@ const websocket = {
     },
     elapsed (state, message) {
       state.socket.elapsed = message.value
+    },
+    playlistupdate (state, message) {
+      // state.socket.playlist = message.value
+      message.value.map(v => {
+        state.socket.playlist.splice(v.Pos, 1, v)
+      })
     }
   }
 }

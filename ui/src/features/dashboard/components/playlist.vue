@@ -3,85 +3,157 @@ v-card.playlist
   v-card-title
     .title Playlist
   v-card-text
-    virtual-list(:size="64" :remain="this.buffer" :bench="this.bench" :onscroll="onscroll" :tobottom="tobottom" :totop="totop")
-      ul(v-for="playlistitem in playlistitems")
-        v-flex(d-flex)
-          v-layout(align-center justify-center row fill-height)
-            v-flex(d-flex xs12 sm12 md4)
-              | {{ playlistitem.Artist }}
-            v-flex(d-flex xs12 sm12 md8)
-              v-layout(style="align-items: center;")
-                v-flex.text-xs-left(md10) {{ playlistitem.Title }}
-                v-flex.text-xs-left(md2)
-                  v-btn(flat icon color="primary")
+    virtual-list(:size="this.size" :remain="this.buffer" :onscroll="onscroll" :tobottom="tobottom")
+      div(v-for="(playlistitem, index) in playlistitems" :index="index" :key="playlistitem.Pos")
+        draggable(v-model="playlistitems" @end="onmoved" :options="{group: 'playlistitems'}" :id="index")
+          v-flex(d-flex :style="style")
+            v-layout(row wrap style="align-items: center;")
+
+              v-flex(d-flex xs10 sm10 md10)
+                v-flex(d-flex xs1 sm1 md1)
+                  | {{ index }}
+                v-flex(d-flex xs12 sm12 md3)
+                  | {{ playlistitem.Artist }}
+                v-flex.text-xs-left(xs12 sm12 md8)
+                  | {{ playlistitem.Title }}
+
+              v-flex(d-flex xs2 sm2 md2)
+                v-flex.text-xs-left(xs4)
+                  v-btn(flat icon color="primary" @click="playid(playlistitem.Id)")
+                    v-icon play_arrow
+                v-flex.text-xs-left(xs8)
+                  v-btn(flat icon color="primary" @click="removeid(playlistitem.Id)")
                     v-icon delete
 </template>
 
 <script>
 import VirtualList from 'vue-virtual-scroll-list'
+import _ from 'lodash'
+import draggable from 'vuedraggable'
 
 export default {
   components: {
-    VirtualList
+    VirtualList,
+    draggable
   },
 
   data () {
     return {
-      bench: 100,
+      // px size of items
+      size: 40,
       start: 0,
-      end: 40,
-      buffer: 12,
+      end: 0,
+      // preload item count
+      buffer: 20,
+      // initial load item count
+      initialBuffer: 40,
+      // save loaded state to refresh items
       bufferedStart: 0,
-      bufferedEnd: 0
+      bufferedEnd: 0,
+      drag: false
     }
   },
 
   computed: {
-    playlistitems () {
-      return this.$store.state.websocket.socket.playlist
+    playlistitems: {
+      get: function () {
+        return this.$store.state.websocket.socket.playlist
+      },
+      set: function () {
+      }
+    },
+    playlistversion () {
+      return this.$store.state.websocket.socket.version
+    },
+    style () {
+      return {
+        'height': this.size + 'px'
+      }
+    }
+  },
+
+  watch: {
+    playlistversion: function () {
+      if (this.end <= 0) {
+        this.end = this.initialBuffer
+      }
+      console.info('playlistversion', this.start, this.end)
+      this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.start, this.end] })
     }
   },
 
   created () {
-    let end = this.end + this.bench
-    this.$socket.sendObj({ mutation: 'playlist', value: [this.start, end] })
+    this.$socket.sendObj({ mutation: 'playlistupdate', value: [0, this.initialBuffer] })
   },
 
   methods: {
+    playid (id) {
+      this.$socket.sendObj({ mutation: 'playid', value: parseInt(id) })
+    },
+
+    removeid (id) {
+      this.$socket.sendObj({ mutation: 'removeid', value: parseInt(id) })
+    },
+
+    onmoved (event, data) {
+      // console.info(event)
+      let from = parseInt(event.from.id)
+      let to = parseInt(event.to.id)
+
+      console.info('moveitem', from, to)
+      this.$socket.sendObj({ mutation: 'playlistmove', value: [from, from + 1, to] })
+    },
+
     tobottom () {
-      let end = this.end + this.bench
-      console.info('request', this.end, end)
-      this.$socket.sendObj({ mutation: 'playlist', value: [this.end, end] })
+      let end = this.end + (this.buffer * 4)
+      this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.end, end] })
     },
 
-    totop () {
-      let start = this.start - this.bench
-      if (start < 0) {
-        start = 0
-      }
-      console.info('request', start, this.start)
-      this.$socket.sendObj({ mutation: 'playlist', value: [start, this.start] })
-    },
-
-    onscroll (event, data) {
+    // playlist may have updated - refresh view as they become visible
+    onscroll: _.debounce(function (event, data) {
       this.start = data['start']
       this.end = data['end']
 
-      if (
-        this.start > this.bufferedEnd - this.buffer ||
-        this.end < this.bufferedStart + this.buffer
-      ) {
-        this.bufferedStart = this.start
-        this.bufferedEnd = this.end
+      // scroll down refresh
+      if (this.end > this.bufferedEnd) {
+        let start = this.bufferedEnd
+        if (start < this.start) {
+          start = this.start
+        }
 
-        console.info('request', this.start, this.end)
-        this.$socket.sendObj({ mutation: 'playlist', value: [this.start, this.end] })
+        let end = this.end + this.buffer
+
+        console.info('down_request', start, end)
+        this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, end] })
+
+        this.bufferedStart = this.start
+        this.bufferedEnd = end
+        return
       }
-    }
+
+      // scroll up refresh
+      if (this.start < this.bufferedStart) {
+        // buffer start to avoid making many requests
+        let start = this.start - this.buffer
+        if (start < 0) {
+          start = 0
+        }
+
+        let end = this.bufferedStart
+        if (end > this.end) {
+          end = this.end
+        }
+
+        console.info('up_request', start, end)
+        this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, end] })
+
+        this.bufferedStart = start
+        this.bufferedEnd = this.end
+      }
+    }, 300)
   }
 }
 </script>
 
 <style lang="stylus">
-
 </style>
