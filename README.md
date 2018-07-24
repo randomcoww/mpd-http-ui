@@ -1,7 +1,5 @@
 ### Backend setup
 
-Run
-
     docker-compose up --build
 
 Elasticsearch:
@@ -22,16 +20,12 @@ Remove containers to test reindexing:
 
 ### Start frontend
 
-Run
-
     cd ui
     npm run dev
 
 #### Environment test
 
 Connect to control using `ncmpcpp`:
-
-Run
 
     ncmpcpp -h localhost -p 6600
 
