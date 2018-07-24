@@ -5,20 +5,21 @@ v-card.playlist
     v-toolbar-title
       | Playlist
 
-  virtual-list(:size="this.size" :remain="this.buffer" :onscroll="onscroll" :tobottom="tobottom")
-    div(v-for="(playlistitem, index) in playlistitems" :index="index" :key="playlistitem.Pos")
-      draggable(v-model="playlistitems" @end="onmoved" :options="{group: 'playlistitems'}" :id="index")
-        v-list-tile(@click="")
-          v-list-tile-title
-            | {{ playlistitem.Artist || 'No Artist' }}
-          v-list-tile-title
-            | {{ playlistitem.Title || 'No Title' }}
-          v-list-action
-            v-btn(flat icon color="primary" @click="playid(playlistitem.Id)")
-              v-icon play_arrow
-          v-list-action
-            v-btn(flat icon color="primary" @click="removeid(playlistitem.Id)")
-              v-icon delete
+  v-list
+    virtual-list(:size="this.size" :remain="this.buffer" :onscroll="onscroll" :tobottom="tobottom")
+      div(v-for="(playlistitem, index) in playlistitems" :index="index" :key="playlistitem.Pos")
+        draggable(v-model="playlistitems" @end="onmoved" :options="{group: 'playlistitems'}" :id="index")
+          v-list-tile(@click="")
+            v-list-tile-title
+              | {{ playlistitem.Artist || 'No Artist' }}
+            v-list-tile-title
+              | {{ playlistitem.Title || 'No Title' }}
+            v-list-action
+              v-btn(flat icon color="primary" @click="playid(playlistitem.Id)")
+                v-icon play_arrow
+            v-list-action
+              v-btn(flat icon color="primary" @click="removeid(playlistitem.Id)")
+                v-icon delete
 </template>
 
 <script>

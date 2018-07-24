@@ -8,17 +8,18 @@ v-card.searchresults
     v-flex(xs6)
       v-text-field(append-icon="search" v-model="searchText" hide-details single-line v-model.lazy="databasequery")
 
-  virtual-list(:size="this.size" :remain="this.buffer" :onscroll="onscroll" :tobottom="tobottom")
-    div(v-for="(searchresult, index) in searchresults" :index="index" :key="searchresult.file")
-      draggable(v-model="searchresults" @end="onmoved" :options="{group: 'playlistitems'}" :id="searchresult.file")
-        v-list-tile(@click="")
-          v-list-tile-title
-            | {{ searchresult.artist || 'No Artist' }}
-          v-list-tile-title
-            | {{ searchresult.title || 'No Title' }}
-          v-list-action
-            v-btn(flat icon color="primary" @click="addpath(searchresult.file, -1)")
-              v-icon add
+  v-list
+    virtual-list(:size="this.size" :remain="this.buffer" :onscroll="onscroll" :tobottom="tobottom")
+      div(v-for="(searchresult, index) in searchresults" :index="index" :key="searchresult.file")
+        draggable(v-model="searchresults" @end="onmoved" :options="{group: 'playlistitems'}" :id="searchresult.file")
+          v-list-tile(@click="")
+            v-list-tile-title
+              | {{ searchresult.artist || 'No Artist' }}
+            v-list-tile-title
+              | {{ searchresult.title || 'No Title' }}
+            v-list-action
+              v-btn(flat icon color="primary" @click="addpath(searchresult.file, -1)")
+                v-icon add
 </template>
 
 <script>

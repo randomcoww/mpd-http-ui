@@ -2,7 +2,6 @@
 v-card
   audio(
     src="http://localhost:8000/mpd"
-    autoplay="autoplay"
     ref="mpdplayer"
     preload="none"
     @end="reloadmpd"
@@ -34,12 +33,12 @@ v-card
           | {{ currentsong.Artist || 'No Artist' }}/{{ currentsong.Title || 'No Title' }}
         v-list-tile-sub-title
           | {{ currentsong.Album || 'No Album' }}
+        v-list-tile-sub-title
+          | {{ currentsong.file }}
+
       v-list-tile-action
         v-list-tile-title
-          | {{ seek_elaspsed | timedisplay }}/{{ seek_duration | timedisplay }}
-
-    v-subheader(inset)
-      | {{ currentsong.file }}
+          | {{ seek_elaspsed | round }}/{{ seek_duration | round }}
 
     v-list-tile(@click="")
       v-slider(
@@ -52,13 +51,12 @@ v-card
 </template>
 
 <script>
-import moment from 'moment'
+// import moment from 'moment'
 
 export default {
   filters: {
-    timedisplay (v) {
-      var duration = moment.duration(Math.round(v), 'seconds')
-      return duration.minutes() + ':' + duration.seconds()
+    round (v) {
+      return Math.round(v)
     }
   },
 
