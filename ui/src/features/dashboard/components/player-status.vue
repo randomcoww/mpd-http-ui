@@ -2,7 +2,7 @@
 v-card
   audio(
     src="http://localhost:8000/mpd"
-    loop="loop"
+    autoplay="autoplay"
     ref="mpdplayer"
     preload="none"
     @end="reloadmpd"
@@ -79,7 +79,6 @@ export default {
     reloadmpd () {
       console.info('reload mpd')
       this.$refs.mpdplayer.load()
-      this.$refs.mpdplayer.play()
     },
 
     playid (id) {
