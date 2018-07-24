@@ -2,6 +2,7 @@
 v-card
   audio(
     src="http://localhost:8000/mpd"
+    autoplay="autoplay"
     ref="mpdplayer"
     preload="none"
     @end="reloadmpd"
@@ -35,7 +36,6 @@ v-card
           | {{ currentsong.Album || 'No Album' }}
         v-list-tile-sub-title
           | {{ currentsong.file }}
-      v-list-tile-avatar
 
   v-list
     v-list-tile(@click="")
@@ -50,7 +50,6 @@ v-card
             v-on:change="onchange")
         v-list-tile-sub-title
           | {{ seek_elaspsed | round }}/{{ seek_duration | round }}
-      v-list-tile-avatar
 
 </template>
 
