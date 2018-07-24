@@ -14,10 +14,10 @@ v-card.playlist
               | {{ playlistitem.Artist || 'No Artist' }}
             v-list-tile-title
               | {{ playlistitem.Title || 'No Title' }}
-            v-list-action
+            v-list-tile-action
               v-btn(flat icon color="primary" @click="playid(playlistitem.Id)")
                 v-icon play_arrow
-            v-list-action
+            v-list-tile-action
               v-btn(flat icon color="primary" @click="removeid(playlistitem.Id)")
                 v-icon delete
 </template>

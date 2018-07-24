@@ -17,7 +17,7 @@ v-card.searchresults
               | {{ searchresult.artist || 'No Artist' }}
             v-list-tile-title
               | {{ searchresult.title || 'No Title' }}
-            v-list-action
+            v-list-tile-action
               v-btn(flat icon color="primary" @click="addpath(searchresult.file, -1)")
                 v-icon add
 </template>
