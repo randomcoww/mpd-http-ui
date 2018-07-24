@@ -8,37 +8,43 @@ v-card
     @end="reloadmpd"
     @error="reloadmpd"
     @ratechange="reloadmpd")
-  v-card-title
-    v-layout(row wrap style="align-items: center;")
-      v-flex.text-xs-left(xs12 sm12 md3 title)
-        | {{ currentsong.Artist || 'No Artist' }}
-      v-flex.text-xs-right(xs12 sm12 md9 title)
-        | {{ currentsong.Album || 'No Album' }}/{{ currentsong.Title || 'No Title' }}
-      v-flex.text-xs-left(xs12 sm12 md12)
-        | {{ currentsong.file }}
-  v-card-text
-    v-slider(
-      :max="seek_duration"
-      :value="seek_elaspsed"
-      v-on:mousedown="onmousedown"
-      v-on:click="onmouseup"
-      v-on:change="onchange")
-    v-layout(row wrap style="align-items: center;")
-      v-flex(d-flex xs3 sm2 md1)
-        v-btn(flat icon color="primary" @click="playprev")
-          v-icon fast_rewind
-      v-flex(d-flex xs3 sm2 md1)
-        v-btn(flat icon color="primary" @click="playid(-1)")
-          v-icon play_arrow
-      v-flex(d-flex xs3 sm2 md1)
-        v-btn(flat icon color="primary" @click="pause")
-          v-icon pause
-      v-flex(d-flex xs3 sm2 md1)
-        v-btn(flat icon color="primary" @click="stop")
-          v-icon stop
-      v-flex(d-flex xs3 sm2 md1)
-        v-btn(flat icon color="primary" @click="playnext")
-          v-icon fast_forward
+
+  v-toolbar(dark)
+    v-toolbar-side-icon
+    v-toolbar-title
+      | {{ currentsong.Artist || 'No Artist' }}/{{ currentsong.Title || 'No Title' }}
+    v-spacer
+    v-btn(icon ripple @click="playprev")
+      v-icon fast_rewind
+    v-btn(icon ripple @click="playid(-1)")
+      v-icon play_arrow
+    v-btn(icon ripple @click="pause")
+      v-icon pause
+    v-btn(icon ripple @click="stop")
+      v-icon stop
+    v-btn(icon ripple @click="playnext")
+      v-icon fast_forward
+
+  v-list(two-line subheader)
+    v-list-tile(@click="")
+      v-list-tile-avatar
+        v-icon(color="primary lighten-1") play_arrow
+      v-list-tile-content
+        v-list-tile-title
+          | {{ currentsong.Artist || 'No Artist' }}/{{ currentsong.Title || 'No Title' }}
+        v-list-tile-sub-title
+          | {{ currentsong.Album || 'No Album' }}
+    v-subheader(inset)
+      | {{ currentsong.file }}
+
+    v-list-tile(@click="")
+      v-slider(
+        :max="seek_duration"
+        :value="seek_elaspsed"
+        v-on:mousedown="onmousedown"
+        v-on:click="onmouseup"
+        v-on:change="onchange")
+
 </template>
 
 <script>
