@@ -94,6 +94,9 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 	<-mpdClient.Ready
 	<-esClient.Ready
 
+  // set mpd repeat by default
+	mpdClient.Conn.Repeat(true)
+
 	// serve http
 	fmt.Printf("API server start on %s\n", listenUrl)
 	log.Fatal(http.ListenAndServe(listenUrl, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(r)))
