@@ -52,7 +52,19 @@ const websocket = {
       state.socket.duration = message.value[1]
     },
     search (state, message) {
-      state.socket.search = message.value
+      // console.info(message.value)
+      let results = message.value[0]
+      let start = parseInt(message.value[1])
+      // console.info('searchstart', start)
+      if (results != null) {
+        results.map(v => {
+          state.socket.search.splice(start, 1, v)
+          start++
+        })
+      }
+      state.socket.search.splice(start)
+      // console.info('searchend', start)
+      // state.socket.search = message.value
     },
     elapsed (state, message) {
       state.socket.elapsed = message.value
