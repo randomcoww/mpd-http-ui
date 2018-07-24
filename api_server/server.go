@@ -13,6 +13,7 @@ import (
 	mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
 	mpd_event "github.com/randomcoww/go-mpd-es/mpd_event"
 	es_handler "github.com/randomcoww/go-mpd-es/es_handler"
+	// es_handler "local/es_handler"
 )
 
 var (
@@ -76,6 +77,12 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/healthcheck", healthCheck).
+		Methods("GET")
+
+	r.HandleFunc("/database/search", search).
+		Queries("q", "{query}").
+		Queries("start", "{start}").
+		Queries("size", "{size}").
 		Methods("GET")
 
 	// websocket handler
@@ -220,19 +227,23 @@ func (c *Client) sendSeekMessage() {
 	}
 }
 
-func (c *Client) sendSearchMessage(query string, size int) {
-	search, err := esClient.Search(query, size)
-
+func (c *Client) sendSearchMessage(query string, start, size int) {
+	search, err := esClient.Search(query, start, size)
 	if err != nil {
 		return
 	}
+
+	message := make([]interface{}, 2)
 
 	var	result []*json.RawMessage
 	for _, hits := range search.Hits.Hits {
 		result = append(result, hits.Source)
 	}
 
-	err = c.conn.WriteJSON(&socketMessage{Data: result, Name: "search"})
+	message[0] = result
+	message[1] = start
+
+	err = c.conn.WriteJSON(&socketMessage{Data: message, Name: "search"})
 	if err != nil {
 		fmt.Printf("Failed to write search message %s\n", err)
 		return
@@ -332,9 +343,10 @@ func (c *Client) readSocketEvents() {
 		case "search":
 			d := v.Data.([]interface{})
 			query := d[0].(string)
-			size := int(d[1].(float64))
-
-			c.sendSearchMessage(query, size)
+			start := int(d[1].(float64))
+			size := int(d[2].(float64))
+			// fmt.Printf("Search %s %s %s\n", query, start, size)
+			c.sendSearchMessage(query, start, size)
 		}
 	}
 }
@@ -429,4 +441,30 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response{"ok"})
+}
+
+
+func search(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	fmt.Printf("Search database %s\n", params)
+
+	search, err := esClient.Search(
+		params["query"],
+		parseNum(params["start"]),
+		parseNum(params["size"]))
+	w.Header().Set("Content-Type", "application/json")
+
+	if err == nil {
+		w.WriteHeader(http.StatusOK)
+
+		// var	result []*json.RawMessage
+		// for _, hits := range search.Hits.Hits {
+		// 	result = append(result, hits.Source)
+		// }
+
+		json.NewEncoder(w).Encode(search)
+	} else {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(response{err.Error()})
+	}
 }

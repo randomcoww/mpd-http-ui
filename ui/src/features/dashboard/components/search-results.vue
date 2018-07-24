@@ -25,6 +25,7 @@ v-card.searchresults
 
 <script>
 import VirtualList from 'vue-virtual-scroll-list'
+import _ from 'lodash'
 import draggable from 'vuedraggable'
 
 export default {
@@ -37,9 +38,14 @@ export default {
     return {
       // px size of items
       size: 40,
-      databasequery: null,
-      errored: false,
-      buffer: 25
+      end: 0,
+      // preload item count
+      buffer: 25,
+      // initial load item count
+      requestStart: 0,
+      requestCount: 40,
+      // search query
+      databasequery: null
     }
   },
 
@@ -59,12 +65,19 @@ export default {
   },
 
   watch: {
-    databasequery (after, before) {
-      this.$socket.sendObj({ mutation: 'search', value: [this.databasequery, 100] })
-    }
+    databasequery: _.debounce(function () {
+      this.requestStart = 0
+      this.sendSearch(this.requestStart, this.requestCount)
+      this.requestStart += this.requestCount
+    }, 300)
   },
 
   methods: {
+    sendSearch (start, count) {
+      console.info('search', start, count)
+      this.$socket.sendObj({ mutation: 'search', value: [this.databasequery, start, count] })
+    },
+
     addpath (path, position) {
       console.info('addpath', path, position)
 
@@ -79,9 +92,14 @@ export default {
     },
 
     tobottom () {
+      if (this.end > this.requestStart - this.requestCount) {
+        this.sendSearch(this.requestStart, this.requestCount)
+        this.requestStart += this.requestCount
+      }
     },
 
     onscroll (event, data) {
+      this.end = data['end']
     }
   }
 }

@@ -246,12 +246,13 @@ func (c *EsClient) Get(file string) (*elastic.GetResult, error) {
 }
 
 // search
-func (c *EsClient) Search(query string, size int) (*elastic.SearchResult, error) {
+func (c *EsClient) Search(query string, start, size int) (*elastic.SearchResult, error) {
 	search, err := c.conn.Search().
 		Index(c.index).
 		Type(c.indexType).
 		Query(elastic.NewSimpleQueryStringQuery(query)).
 		Pretty(true).
+		From(start).
 		Size(size).
 		Do(ctx)
 
