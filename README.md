@@ -1,4 +1,4 @@
-### Backend setup
+#### Backend setup
 
     docker-compose up --build
 
@@ -18,7 +18,7 @@ Remove containers to test reindexing:
 
     docker-compose rm -f
 
-### Start frontend
+#### Start frontend
 
     cd ui
     npm run dev
