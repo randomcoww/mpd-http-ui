@@ -35,18 +35,22 @@ v-card
           | {{ currentsong.Album || 'No Album' }}
         v-list-tile-sub-title
           | {{ currentsong.file }}
+      v-list-tile-avatar
 
-      v-list-tile-action
-        v-list-tile-title
-          | {{ seek_elaspsed | round }}/{{ seek_duration | round }}
-
+  v-list
     v-list-tile(@click="")
-      v-slider(
-        :max="seek_duration"
-        :value="seek_elaspsed"
-        v-on:mousedown="onmousedown"
-        v-on:click="onmouseup"
-        v-on:change="onchange")
+      v-list-tile-avatar
+      v-list-tile-content
+        v-list-tile-title
+          v-slider(
+            :max="seek_duration"
+            :value="seek_elaspsed"
+            v-on:mousedown="onmousedown"
+            v-on:click="onmouseup"
+            v-on:change="onchange")
+        v-list-tile-sub-title
+          | {{ seek_elaspsed | round }}/{{ seek_duration | round }}
+      v-list-tile-avatar
 
 </template>
 
