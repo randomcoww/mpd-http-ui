@@ -1,5 +1,13 @@
 <template lang="pug">
 v-card
+  audio(
+    src="http://localhost:8000/mpd"
+    loop="loop"
+    ref="mpdplayer"
+    preload="none"
+    @end="reloadmpd"
+    @error="reloadmpd"
+    @ratechange="reloadmpd")
   v-card-title
     v-layout(row wrap style="align-items: center;")
       v-flex.text-xs-left(xs12 sm12 md3 title)
@@ -57,11 +65,23 @@ export default {
     }
   },
 
+  watch: {
+    currentsong: function () {
+      this.reloadmpd()
+    }
+  },
+
   created () {
     this.$socket.sendObj({ mutation: 'currentsong' })
   },
 
   methods: {
+    reloadmpd () {
+      console.info('reload mpd')
+      this.$refs.mpdplayer.load()
+      this.$refs.mpdplayer.play()
+    },
+
     playid (id) {
       this.$socket.sendObj({ mutation: 'playid', value: parseInt(id) })
     },
