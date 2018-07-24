@@ -1,27 +1,25 @@
 <template lang="pug">
 v-card.playlist
-  v-card-title
-    .title Playlist
-  v-card-text
+  v-toolbar(dark)
+    v-toolbar-side-icon
+    v-toolbar-title
+      | Playlist
+
+  v-list
     virtual-list(:size="this.size" :remain="this.buffer" :onscroll="onscroll" :tobottom="tobottom")
       div(v-for="(playlistitem, index) in playlistitems" :index="index" :key="playlistitem.Pos")
         draggable(v-model="playlistitems" @end="onmoved" :options="{group: 'playlistitems'}" :id="index")
-          v-flex(d-flex :style="style")
-            v-layout(row wrap style="align-items: center;")
-
-              v-flex(d-flex xs10 sm10 md10)
-                v-flex(d-flex xs12 sm12 md4)
-                  | {{ playlistitem.Artist || 'No Artist' }}
-                v-flex.text-xs-left(xs12 sm12 md8)
-                  | {{ playlistitem.Title || 'No Title' }}
-
-              v-flex(d-flex xs2 sm2 md2)
-                v-flex.text-xs-left(xs4)
-                  v-btn(flat icon color="primary" @click="playid(playlistitem.Id)")
-                    v-icon play_arrow
-                v-flex.text-xs-left(xs8)
-                  v-btn(flat icon color="primary" @click="removeid(playlistitem.Id)")
-                    v-icon delete
+          v-list-tile(@click="")
+            v-list-tile-title
+              | {{ playlistitem.Artist || 'No Artist' }}
+            v-list-tile-title
+              | {{ playlistitem.Title || 'No Title' }}
+            v-list-tile-action
+              v-btn(flat icon color="primary" @click="playid(playlistitem.Id)")
+                v-icon play_arrow
+            v-list-tile-action
+              v-btn(flat icon color="primary" @click="removeid(playlistitem.Id)")
+                v-icon delete
 </template>
 
 <script>
@@ -38,11 +36,11 @@ export default {
   data () {
     return {
       // px size of items
-      size: 40,
+      size: 48,
       start: 0,
       end: 0,
       // preload item count
-      buffer: 20,
+      buffer: 17,
       // initial load item count
       initialBuffer: 40,
       // save loaded state to refresh items

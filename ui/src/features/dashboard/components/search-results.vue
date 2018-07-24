@@ -1,25 +1,25 @@
 <template lang="pug">
 v-card.searchresults
-  v-card-title
-    .title Library
-  v-card-text
-    v-text-field(label="Search..." v-model.lazy="databasequery")
+  v-toolbar(dark)
+    v-toolbar-side-icon
+    v-toolbar-title
+      | Library
+    v-spacer
+    v-flex(xs6)
+      v-text-field(append-icon="search" v-model="searchText" hide-details single-line v-model.lazy="databasequery")
+
+  v-list
     virtual-list(:size="this.size" :remain="this.buffer" :onscroll="onscroll" :tobottom="tobottom")
       div(v-for="(searchresult, index) in searchresults" :index="index" :key="searchresult.file")
         draggable(v-model="searchresults" @end="onmoved" :options="{group: 'playlistitems'}" :id="searchresult.file")
-          v-flex(d-flex :style="style")
-            v-layout(row wrap style="align-items: center;")
-
-              v-flex(d-flex xs10 sm10 md10)
-                v-flex(d-flex xs12 sm12 md4)
-                  | {{ searchresult.artist || 'No Artist' }}
-                v-flex.text-xs-left(md8)
-                  | {{ searchresult.title || 'No Title' }}
-
-              v-flex(d-flex xs2 sm2 md2)
-                v-layout(style="align-items: center;")
-                  v-btn(flat icon color="primary" @click="addpath(searchresult.file, -1)")
-                    v-icon add
+          v-list-tile(@click="")
+            v-list-tile-title
+              | {{ searchresult.artist || 'No Artist' }}
+            v-list-tile-title
+              | {{ searchresult.title || 'No Title' }}
+            v-list-tile-action
+              v-btn(flat icon color="primary" @click="addpath(searchresult.file, -1)")
+                v-icon add
 </template>
 
 <script>
@@ -36,10 +36,10 @@ export default {
   data () {
     return {
       // px size of items
-      size: 40,
+      size: 48,
       end: 0,
       // preload item count
-      buffer: 25,
+      buffer: 23,
       // initial load item count
       requestStart: 0,
       requestCount: 40,

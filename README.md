@@ -1,4 +1,4 @@
-### Setup
+#### Backend setup
 
     docker-compose up --build
 
@@ -14,15 +14,18 @@ MPD (stream):
 REST API:
 - http://localhost:3000
 
-Need to clean containers after each run to test indexing new items each time.
+Remove containers to test reindexing:
 
     docker-compose rm -f
+
+#### Start frontend
+
+    cd ui
+    npm run dev
 
 #### Environment test
 
 Connect to control using `ncmpcpp`:
-
-Run
 
     ncmpcpp -h localhost -p 6600
 
