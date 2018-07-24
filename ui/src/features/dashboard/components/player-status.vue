@@ -34,6 +34,10 @@ v-card
           | {{ currentsong.Artist || 'No Artist' }}/{{ currentsong.Title || 'No Title' }}
         v-list-tile-sub-title
           | {{ currentsong.Album || 'No Album' }}
+      v-list-tile-action
+        v-list-tile-title
+          | {{ seek_elaspsed | timedisplay }}/{{ seek_duration | timedisplay }}
+
     v-subheader(inset)
       | {{ currentsong.file }}
 
@@ -48,7 +52,16 @@ v-card
 </template>
 
 <script>
+import moment from 'moment'
+
 export default {
+  filters: {
+    timedisplay (v) {
+      var duration = moment.duration(Math.round(v), 'seconds')
+      return duration.minutes() + ':' + duration.seconds()
+    }
+  },
+
   data () {
     return {
       dragStartValue: null
