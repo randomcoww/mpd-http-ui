@@ -47,7 +47,6 @@ v-card
         v-list-tile-sub-title
           | {{ currentsong.file }}
 
-  v-list
     v-list-tile(@click="")
       v-list-tile-avatar
       v-list-tile-content
