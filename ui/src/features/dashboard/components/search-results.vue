@@ -39,7 +39,7 @@ export default {
       size: 48,
       end: 0,
       // preload item count
-      buffer: 23,
+      buffer: 22,
       // initial load item count
       requestStart: 0,
       requestCount: 40,

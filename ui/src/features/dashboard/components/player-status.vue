@@ -2,11 +2,19 @@
 v-card
   audio(
     src="http://localhost:8000/mpd"
+    autoplay="autoplay"
     ref="mpdplayer"
     preload="none"
-    @end="reloadmpd"
+    @canplay="playerstate"
+    @play="playerstate"
+    @playing="playerstate"
+    @emptied="playerstate"
     @error="reloadmpd"
-    @ratechange="reloadmpd")
+    @ratechange="playerstate"
+    @ended="reloadmpd"
+    @stalled="reloadmpd"
+    @suspended="playerstate"
+    @waiting="playerstate")
 
   v-toolbar(dark)
     v-toolbar-side-icon
@@ -27,7 +35,10 @@ v-card
   v-list(two-line subheader)
     v-list-tile(@click="")
       v-list-tile-avatar
-        v-icon(color="primary lighten-1") play_arrow
+        template(v-if="this.playerState >= 4")
+          v-icon(color="primary lighten-1") play_arrow
+        template(v-else)
+          v-icon(color="primary lighten-1") pause
       v-list-tile-content
         v-list-tile-title
           | {{ currentsong.Artist || 'No Artist' }}/{{ currentsong.Title || 'No Title' }}
@@ -35,7 +46,6 @@ v-card
           | {{ currentsong.Album || 'No Album' }}
         v-list-tile-sub-title
           | {{ currentsong.file }}
-      v-list-tile-avatar
 
   v-list
     v-list-tile(@click="")
@@ -50,12 +60,12 @@ v-card
             v-on:change="onchange")
         v-list-tile-sub-title
           | {{ seek_elaspsed | round }}/{{ seek_duration | round }}
-      v-list-tile-avatar
 
 </template>
 
 <script>
 // import moment from 'moment'
+import _ from 'lodash'
 
 export default {
   filters: {
@@ -66,7 +76,8 @@ export default {
 
   data () {
     return {
-      dragStartValue: null
+      dragStartValue: null,
+      playerState: null
     }
   },
 
@@ -97,10 +108,15 @@ export default {
   },
 
   methods: {
-    reloadmpd () {
-      console.info('reload mpd')
+    playerstate: _.debounce(function (event) {
+      this.playerState = this.$refs.mpdplayer.readyState
+      console.info('player state', event.type, this.playerState)
+    }, 1000),
+
+    reloadmpd: _.debounce(function () {
+      console.info('player reload')
       this.$refs.mpdplayer.load()
-    },
+    }, 1000),
 
     playid (id) {
       this.$socket.sendObj({ mutation: 'playid', value: parseInt(id) })
