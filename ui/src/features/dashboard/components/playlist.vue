@@ -1,6 +1,6 @@
 <template lang="pug">
 v-card.playlist
-  v-toolbar(dark)
+  v-toolbar(dense flat)
     v-toolbar-side-icon
     v-toolbar-title
       | Playlist

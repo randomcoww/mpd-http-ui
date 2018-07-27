@@ -1,5 +1,5 @@
 <template lang="pug">
-v-card(dark)
+v-card(dense)
   v-container.my-dashboard(
     fluid
     text-xs-center
@@ -7,22 +7,18 @@ v-card(dark)
     v-bind:grid-list-lg="$vuetify.breakpoint.mdAndUp"
   )
     v-layout(row wrap align-content-center)
-      v-flex(d-flex xs12 sm12 md6 height="100%")
+      v-flex(d-flex xs12 sm12 md12 height="100%")
         v-layout(row wrap)
           v-flex(d-flex xs12 sm12 md12)
             player-status()
           v-flex(d-flex xs12 sm12 md12)
             playlist()
-      v-flex(d-flex xs12 sm12 md6 max-height="100%")
-        v-layout(row wrap)
-          v-flex(d-flex xs12 sm12 md12)
-            search-results()
+
 </template>
 
 <script>
 import store from './store' // eslint-disable-line no-unused-vars
 import Playlist from './components/playlist'
-import SearchResults from './components/search-results'
 import PlayerStatus from './components/player-status'
 
 export default {
@@ -30,7 +26,6 @@ export default {
 
   components: {
     Playlist,
-    SearchResults,
     PlayerStatus
   },
 

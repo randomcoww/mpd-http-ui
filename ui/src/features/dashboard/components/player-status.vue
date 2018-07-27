@@ -16,7 +16,7 @@ v-card
     @suspended="playerstate"
     @waiting="playerstate")
 
-  v-toolbar(dark)
+  v-toolbar(dense flat)
     v-toolbar-side-icon
     v-toolbar-title
       | {{ currentsong.Artist || 'No Artist' }}/{{ currentsong.Title || 'No Title' }}

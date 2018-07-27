@@ -1,5 +1,5 @@
 <template lang="pug">
-  v-app.my-default-layout
+  v-app.my-default-layout(dark)
     app-sidebar
     app-bar
     v-content(style="padding-top: 48px;")
