@@ -50,3 +50,10 @@ services:
     restart: on-failure
     ports:
     - "3000:3000"
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    restart: on-failure
+    ports:
+    - "8080:8080"
