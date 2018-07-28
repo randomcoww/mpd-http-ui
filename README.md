@@ -14,14 +14,12 @@ MPD (stream):
 REST API:
 - http://localhost:3000
 
+UI:
+- http://localhost:8080
+
 Remove containers to test reindexing:
 
     docker-compose rm -f
-
-#### Start frontend
-
-    cd ui
-    npm run dev
 
 #### Environment test
 
