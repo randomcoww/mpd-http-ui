@@ -16,22 +16,6 @@ v-card
     @suspended="playerstate"
     @waiting="playerstate")
 
-  v-toolbar(dark)
-    v-toolbar-side-icon
-    v-toolbar-title
-      | {{ currentsong.Artist || 'No Artist' }}/{{ currentsong.Title || 'No Title' }}
-    v-spacer
-    v-btn(icon ripple @click="playprev")
-      v-icon fast_rewind
-    v-btn(icon ripple @click="playid(-1)")
-      v-icon play_arrow
-    v-btn(icon ripple @click="pause")
-      v-icon pause
-    v-btn(icon ripple @click="stop")
-      v-icon stop
-    v-btn(icon ripple @click="playnext")
-      v-icon fast_forward
-
   v-list(two-line subheader)
     v-list-tile(@click="")
       v-list-tile-avatar
@@ -47,7 +31,6 @@ v-card
         v-list-tile-sub-title
           | {{ currentsong.file }}
 
-  v-list
     v-list-tile(@click="")
       v-list-tile-avatar
       v-list-tile-content
@@ -56,7 +39,7 @@ v-card
             :max="seek_duration"
             :value="seek_elaspsed"
             v-on:mousedown="onmousedown"
-            v-on:click="onmouseup"
+            v-on:click.stop="onmouseup"
             v-on:change="onchange")
         v-list-tile-sub-title
           | {{ seek_elaspsed | round }}/{{ seek_duration | round }}
@@ -117,26 +100,6 @@ export default {
       console.info('player reload')
       this.$refs.mpdplayer.load()
     }, 1000),
-
-    playid (id) {
-      this.$socket.sendObj({ mutation: 'playid', value: parseInt(id) })
-    },
-
-    stop () {
-      this.$socket.sendObj({ mutation: 'stop' })
-    },
-
-    pause () {
-      this.$socket.sendObj({ mutation: 'pause' })
-    },
-
-    playnext () {
-      this.$socket.sendObj({ mutation: 'playnext' })
-    },
-
-    playprev () {
-      this.$socket.sendObj({ mutation: 'playprev' })
-    },
 
     onchange (value) {
       this.dragStartValue = null

@@ -1,65 +1,52 @@
 <template lang="pug">
+v-card
   v-toolbar.my-appbar(
-    :color="$vuetify.breakpoint.smAndDown ? 'primary' : 'default'"
-    :dark="$vuetify.breakpoint.smAndDown"
-    flat
-    fixed
     app
+    flat
     dense
   )
-    v-toolbar-side-icon(v-show="!backButton" @click.stop="toggleSidebar()")
-    v-btn(icon v-show="backButton" @click.stop="$router.back()")
-      v-icon arrow_back
-    v-toolbar-title.my_appbar__default-title(v-if="!$slots.title") {{ $store.state.common.title }}
-    v-toolbar-title.my-appbar__title(v-if="$slots.title && (!$slots.smallTitle || $vuetify.breakpoint.mdAndUp)")
-      slot(name="title")
-    v-toolbar-title.my-appbar__small-title(v-if="$slots.smallTitle && $vuetify.breakpoint.smAndDown")
-      slot(name="smallTitle")
+    v-btn(icon ripple @click="playprev")
+      v-icon fast_rewind
+    v-btn(icon ripple @click="playid(-1)")
+      v-icon play_arrow
+    v-btn(icon ripple @click="playnext")
+      v-icon fast_forward
+
+    v-toolbar-title
+      | {{ currentsong.Artist || 'No Artist' }}/{{ currentsong.Title || 'No Title' }}
     v-spacer
-    .my-appbar__icons(v-if="!$slots.smallIcons || $vuetify.breakpoint.mdAndUp")
-      slot(name="icons")
-    .my-appbar__small-icons(v-if="$slots.smallIcons && $vuetify.breakpoint.smAndDown")
-      slot(name="smallIcons")
+    v-toolbar-side-icon(@click.stop="toggleSidebar()")
+
 </template>
 
 <script>
 export default {
-  name: 'AppBar',
 
-  props: {
-    backButton: {
-      type: Boolean,
-      default: false
+  computed: {
+    currentsong () {
+      return this.$store.state.websocket.socket.currentsong
     }
   },
 
   methods: {
     toggleSidebar () {
       this.$store.dispatch('common/updateSidebar', { visible: !this.$store.state.common.sidebar.visible })
+    },
+
+    playid (id) {
+      this.$socket.sendObj({ mutation: 'playid', value: parseInt(id) })
+    },
+
+    playnext () {
+      this.$socket.sendObj({ mutation: 'playnext' })
+    },
+
+    playprev () {
+      this.$socket.sendObj({ mutation: 'playprev' })
     }
   }
 }
 </script>
 
 <style lang="stylus">
-#app
-  .my-appbar
-
-    .toolbar__title
-      margin-left: 0
-
-    &__icons
-      margin-right: 8px
-
-    &__small-icons
-      white-space: nowrap
-      margin-right: 5px
-      margin-left: 8px
-
-      .btn
-        margin: 0 0 0 0
-
-      .btn--flat
-        // @TODO: Scoped styles on named slots not working?
-        min-width: 40px
 </style>
