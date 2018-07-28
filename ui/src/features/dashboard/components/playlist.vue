@@ -1,12 +1,12 @@
 <template lang="pug">
 v-card.playlist
-  v-toolbar(dense flat)
-    v-toolbar-side-icon
-    v-toolbar-title
-      | Playlist
-
   v-list
-    virtual-list(:size="this.size" :remain="this.buffer" :onscroll="onscroll" :tobottom="tobottom")
+    virtual-list(
+      :size="this.size"
+      :remain="this.buffer"
+      :onscroll="onscroll"
+      :tobottom="tobottom"
+    )
       div(v-for="(playlistitem, index) in playlistitems" :index="index" :key="playlistitem.Pos")
         draggable(v-model="playlistitems" @end="onmoved" :options="{group: 'playlistitems'}" :id="index")
           v-list-tile(@click="")
@@ -40,7 +40,7 @@ export default {
       start: 0,
       end: 0,
       // preload item count
-      buffer: 17,
+      buffer: 10,
       // initial load item count
       initialBuffer: 40,
       // save loaded state to refresh items
@@ -78,11 +78,23 @@ export default {
     }
   },
 
+  mounted () {
+    window.addEventListener('resize', this.onresize)
+    this.onresize()
+  },
+  beforeDestroy () {
+    window.removeEventListener('resize', this.onresize)
+  },
+
   created () {
     this.$socket.sendObj({ mutation: 'playlistupdate', value: [0, this.initialBuffer] })
   },
 
   methods: {
+    onresize: _.debounce(function () {
+      this.buffer = Math.floor((window.innerHeight - this.size - 250) / this.size)
+    }, 300),
+
     playid (id) {
       this.$socket.sendObj({ mutation: 'playid', value: parseInt(id) })
     },

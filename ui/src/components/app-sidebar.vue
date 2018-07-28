@@ -16,17 +16,22 @@ v-navigation-drawer.my-sidebar(
       v-text-field(append-icon="search" v-model="searchText" hide-details single-line v-model.lazy="databasequery")
 
   v-list
-    virtual-list(:size="this.size" :remain="this.buffer" :onscroll="onscroll" :tobottom="tobottom")
+    virtual-list(
+      :size="this.size"
+      :remain="this.buffer"
+      :onscroll="onscroll"
+      :tobottom="tobottom"
+    )
       div(v-for="(searchresult, index) in searchresults" :index="index" :key="searchresult.file")
         draggable(v-model="searchresults" @end="onmoved" :options="{group: 'playlistitems'}" :id="searchresult.file")
           v-list-tile(@click="")
+            v-list-tile-action
+              v-btn(flat icon color="primary" @click="addpath(searchresult.file, -1)")
+                v-icon add
             v-list-tile-title
               | {{ searchresult.artist || 'No Artist' }}
             v-list-tile-title
               | {{ searchresult.title || 'No Title' }}
-            v-list-tile-action
-              v-btn(flat icon color="primary" @click="addpath(searchresult.file, -1)")
-                v-icon add
 </template>
 
 <script>
@@ -46,7 +51,7 @@ export default {
       size: 48,
       end: 0,
       // preload item count
-      buffer: 22,
+      buffer: 10,
       // initial load item count
       requestStart: 0,
       requestCount: 40,
@@ -73,7 +78,7 @@ export default {
     },
     style () {
       return {
-        'height': this.size + 'px'
+        // 'height': this.size + 'px'
       }
     }
   },
@@ -86,7 +91,19 @@ export default {
     }, 300)
   },
 
+  mounted () {
+    window.addEventListener('resize', this.onresize)
+    this.onresize()
+  },
+  beforeDestroy () {
+    window.removeEventListener('resize', this.onresize)
+  },
+
   methods: {
+    onresize: _.debounce(function () {
+      this.buffer = Math.floor((window.innerHeight - this.size - 10) / this.size)
+    }, 300),
+
     sendSearch (start, count) {
       console.info('search', start, count)
       this.$socket.sendObj({ mutation: 'search', value: [this.databasequery, start, count] })
