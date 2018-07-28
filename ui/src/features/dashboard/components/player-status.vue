@@ -39,7 +39,7 @@ v-card
             :max="seek_duration"
             :value="seek_elaspsed"
             v-on:mousedown="onmousedown"
-            v-on:click="onmouseup"
+            v-on:click.stop="onmouseup"
             v-on:change="onchange")
         v-list-tile-sub-title
           | {{ seek_elaspsed | round }}/{{ seek_duration | round }}
@@ -99,7 +99,19 @@ export default {
     reloadmpd: _.debounce(function () {
       console.info('player reload')
       this.$refs.mpdplayer.load()
-    }, 1000)
+    }, 1000),
+
+    onchange (value) {
+      this.dragStartValue = null
+      this.$socket.sendObj({ mutation: 'seek', value: value })
+      this.$store.commit('elapsed', { value: value })
+    },
+    onmousedown () {
+      this.dragStartValue = this.$store.state.websocket.socket.elapsed
+    },
+    onmouseup () {
+      this.dragStartValue = null
+    }
   }
 }
 </script>

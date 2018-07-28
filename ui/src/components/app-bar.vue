@@ -15,7 +15,7 @@ v-card
     v-toolbar-title
       | {{ currentsong.Artist || 'No Artist' }}/{{ currentsong.Title || 'No Title' }}
     v-spacer
-    v-toolbar-side-icon(v-show="!backButton" @click.stop="toggleSidebar()")
+    v-toolbar-side-icon(@click.stop="toggleSidebar()")
 
 </template>
 
