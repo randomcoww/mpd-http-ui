@@ -4,21 +4,21 @@ v-card.playlist
     virtual-list(
       :size="this.size"
       :remain="this.buffer"
-      :onscroll="onscroll"
-      :tobottom="tobottom"
+      :onscroll="onScroll"
+      :tobottom="onScrollBottom"
     )
       div(v-for="(playlistitem, index) in playlistitems" :index="index" :key="playlistitem.Pos")
-        draggable(v-model="playlistitems" @end="onmoved" :options="{group: 'playlistitems'}" :id="index")
+        draggable(v-model="playlistitems" @end="onMoved" :options="{group: 'playlistitems'}" :id="index")
           v-list-tile(@click="")
             v-list-tile-title
               | {{ playlistitem.Artist || 'No Artist' }}
             v-list-tile-title
               | {{ playlistitem.Title || 'No Title' }}
             v-list-tile-action
-              v-btn(flat icon color="primary" @click="playid(playlistitem.Id)")
+              v-btn(flat icon color="primary" @click="playId(playlistitem.Id)")
                 v-icon play_arrow
             v-list-tile-action
-              v-btn(flat icon color="primary" @click="removeid(playlistitem.Id)")
+              v-btn(flat icon color="primary" @click="removeId(playlistitem.Id)")
                 v-icon delete
 </template>
 
@@ -58,7 +58,7 @@ export default {
       set: function () {
       }
     },
-    playlistversion () {
+    playlistVersion () {
       return this.$store.state.websocket.socket.version
     },
     style () {
@@ -69,11 +69,11 @@ export default {
   },
 
   watch: {
-    playlistversion: function () {
+    playlistVersion: function () {
       if (this.end <= 0) {
         this.end = this.initialBuffer
       }
-      console.info('playlistversion', this.start, this.end)
+      // console.info('playlistversion', this.start, this.end)
       this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.start, this.end] })
     }
   },
@@ -95,30 +95,30 @@ export default {
       this.buffer = Math.floor((window.innerHeight - this.size - 250) / this.size)
     }, 300),
 
-    playid (id) {
+    playId (id) {
       this.$socket.sendObj({ mutation: 'playid', value: parseInt(id) })
     },
 
-    removeid (id) {
+    removeId (id) {
       this.$socket.sendObj({ mutation: 'removeid', value: parseInt(id) })
     },
 
-    onmoved (event, data) {
+    onMoved (event, data) {
       // console.info(event)
       let from = parseInt(event.from.id)
       let to = parseInt(event.to.id)
 
-      console.info('moveitem', from, to)
+      // console.info('moveitem', from, to)
       this.$socket.sendObj({ mutation: 'playlistmove', value: [from, from + 1, to] })
     },
 
-    tobottom () {
+    onScrollBottom () {
       let end = this.end + (this.buffer * 4)
       this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.end, end] })
     },
 
     // playlist may have updated - refresh view as they become visible
-    onscroll: _.debounce(function (event, data) {
+    onScroll: _.debounce(function (event, data) {
       this.start = data['start']
       this.end = data['end']
 
@@ -131,7 +131,7 @@ export default {
 
         let end = this.end + this.buffer
 
-        console.info('down_request', start, end)
+        // console.info('down_request', start, end)
         this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, end] })
 
         this.bufferedStart = this.start
@@ -152,7 +152,7 @@ export default {
           end = this.end
         }
 
-        console.info('up_request', start, end)
+        // console.info('up_request', start, end)
         this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, end] })
 
         this.bufferedStart = start

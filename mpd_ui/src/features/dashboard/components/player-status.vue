@@ -5,16 +5,16 @@ v-card
     autoplay="autoplay"
     ref="mpdplayer"
     preload="none"
-    @canplay="playerstate"
-    @play="playerstate"
-    @playing="playerstate"
-    @emptied="playerstate"
-    @error="reloadmpd"
-    @ratechange="playerstate"
-    @ended="reloadmpd"
-    @stalled="reloadmpd"
-    @suspended="playerstate"
-    @waiting="playerstate")
+    @canplay="onMpdEvent"
+    @play="onMpdEvent"
+    @playing="onMpdEvent"
+    @emptied="onMpdEvent"
+    @error="reloadAudio"
+    @ratechange="onMpdEvent"
+    @ended="reloadAudio"
+    @stalled="reloadAudio"
+    @suspended="onMpdEvent"
+    @waiting="onMpdEvent")
 
   v-list(two-line subheader)
     v-list-tile(@click="")
@@ -25,24 +25,24 @@ v-card
           v-icon(color="primary lighten-1") pause
       v-list-tile-content
         v-list-tile-title
-          | {{ currentsong.Artist || 'No Artist' }}/{{ currentsong.Title || 'No Title' }}
+          | {{ currentSong.Artist || 'No Artist' }}/{{ currentSong.Title || 'No Title' }}
         v-list-tile-sub-title
-          | {{ currentsong.Album || 'No Album' }}
+          | {{ currentSong.Album || 'No Album' }}
         v-list-tile-sub-title
-          | {{ currentsong.file }}
+          | {{ currentSong.file }}
 
     v-list-tile(@click="")
       v-list-tile-avatar
       v-list-tile-content
         v-list-tile-title
           v-slider(
-            :max="seek_duration"
-            :value="seek_elaspsed"
-            v-on:mousedown="onmousedown"
-            v-on:click.stop="onmouseup"
-            v-on:change="onchange")
+            :max="seekDuration"
+            :value="seekElaspsed"
+            v-on:mousedown="onSeekMouseDown"
+            v-on:click.stop="onSeekMouseUp"
+            v-on:change="onSeekChanged")
         v-list-tile-sub-title
-          | {{ seek_elaspsed | round }}/{{ seek_duration | round }}
+          | {{ seekElaspsed | round }}/{{ seekDuration | round }}
 
 </template>
 
@@ -65,24 +65,24 @@ export default {
   },
 
   computed: {
-    currentsong () {
+    currentSong () {
       return this.$store.state.websocket.socket.currentsong
     },
-    seek_elaspsed () {
+    seekElaspsed () {
       if (this.dragStartValue != null) {
         return this.dragStartValue
       } else {
         return this.$store.state.websocket.socket.elapsed
       }
     },
-    seek_duration () {
+    seekDuration () {
       return this.$store.state.websocket.socket.duration
     }
   },
 
   watch: {
-    currentsong: function () {
-      this.reloadmpd()
+    currentSong: function () {
+      this.reloadAudio()
     }
   },
 
@@ -91,25 +91,25 @@ export default {
   },
 
   methods: {
-    playerstate: _.debounce(function (event) {
+    onMpdEvent: _.debounce(function (event) {
       this.playerState = this.$refs.mpdplayer.readyState
-      console.info('player state', event.type, this.playerState)
+      // console.info('player state', event.type, this.playerState)
     }, 1000),
 
-    reloadmpd: _.debounce(function () {
-      console.info('player reload')
+    reloadAudio: _.debounce(function () {
+      // console.info('player reload')
       this.$refs.mpdplayer.load()
     }, 1000),
 
-    onchange (value) {
+    onSeekChanged (value) {
       this.dragStartValue = null
       this.$socket.sendObj({ mutation: 'seek', value: value })
       this.$store.commit('elapsed', { value: value })
     },
-    onmousedown () {
+    onSeekMouseDown () {
       this.dragStartValue = this.$store.state.websocket.socket.elapsed
     },
-    onmouseup () {
+    onSeekMouseUp () {
       this.dragStartValue = null
     }
   }

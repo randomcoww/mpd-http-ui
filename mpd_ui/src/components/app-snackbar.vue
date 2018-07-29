@@ -4,7 +4,7 @@ v-snackbar(
   :right="true"
   :timeout='$store.state.common.snackbar.timeout'
   v-model='snackbarActive')
-  | {{ $store.state.common.snackbar.text | truncate(100) }}
+  | {{ $store.state.common.snackbar.text | truncate(100, '...') }}
   v-btn(dark='' flat='' @click.native='snackbarActive = false')
     v-icon close
 </template>
@@ -14,8 +14,12 @@ export default {
   name: 'DefaultSnackbar',
 
   filters: {
-    truncate: function (string, value) {
-      return string.substring(0, value) + '...'
+    truncate: function (string, value, append) {
+      if (string.length > value) {
+        return string.substring(0, value - append.length) + append
+      } else {
+        return string
+      }
     }
   },
 

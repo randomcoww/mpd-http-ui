@@ -5,11 +5,11 @@ v-card
     flat
     dense
   )
-    v-btn(icon ripple @click="playprev")
+    v-btn(icon ripple @click="playPrev")
       v-icon fast_rewind
-    v-btn(icon ripple @click="playid(-1)")
+    v-btn(icon ripple @click="playId(-1)")
       v-icon play_arrow
-    v-btn(icon ripple @click="playnext")
+    v-btn(icon ripple @click="playNext")
       v-icon fast_forward
 
     v-toolbar-title
@@ -33,15 +33,15 @@ export default {
       this.$store.dispatch('common/updateSidebar', { visible: !this.$store.state.common.sidebar.visible })
     },
 
-    playid (id) {
+    playId (id) {
       this.$socket.sendObj({ mutation: 'playid', value: parseInt(id) })
     },
 
-    playnext () {
+    playNext () {
       this.$socket.sendObj({ mutation: 'playnext' })
     },
 
-    playprev () {
+    playPrev () {
       this.$socket.sendObj({ mutation: 'playprev' })
     }
   }

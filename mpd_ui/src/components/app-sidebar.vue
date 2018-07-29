@@ -105,7 +105,7 @@ export default {
     }, 300),
 
     sendSearch (start, count) {
-      console.info('search', start, count)
+      // console.info('search', start, count)
       this.$socket.sendObj({ mutation: 'search', value: [this.databasequery, start, count] })
     },
 
@@ -116,6 +116,7 @@ export default {
     addPathToPlaylist (path, position) {
       position = parseInt(position)
       if (Number.isInteger(position)) {
+        console.info('AddToPlaylist', path, position)
         this.$socket.sendObj({ mutation: 'addpath', value: [path, position] })
         // show added message
         this.showSnackMessage('Added ' + path)
@@ -123,11 +124,11 @@ export default {
     },
 
     onDragStart (event) {
-      console.info('onDragStart', event)
+      // console.info('onDragStart', event)
     },
 
     onDragEnd (event) {
-      console.info('onDragEnd', event)
+      // console.info('onDragEnd', event.from.id, event.to.id)
       this.addPathToPlaylist(event.from.id, event.to.id)
     },
 
