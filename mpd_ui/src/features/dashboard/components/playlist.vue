@@ -1,6 +1,6 @@
 <template lang="pug">
 v-card.playlist
-
+  v-list
     virtual-list(
       :size="this.size"
       :remain="this.buffer"
@@ -10,13 +10,13 @@ v-card.playlist
       div(v-for="(playlistitem, index) in playlistitems" :index="index" :key="playlistitem.Pos")
         draggable(v-model="playlistitems" @end="onMoved" :options="{group: 'playlistitems'}" :id="index")
           v-list-tile(@click="")
+            v-list-tile-action
+              v-btn(flat icon color="primary" @click="playId(playlistitem.Id)")
+                v-icon play_arrow
             v-list-tile-title
               | {{ playlistitem.Artist || 'No Artist' }}
             v-list-tile-title
               | {{ playlistitem.Title || 'No Title' }}
-            v-list-tile-action
-              v-btn(flat icon color="primary" @click="playId(playlistitem.Id)")
-                v-icon play_arrow
             v-list-tile-action
               v-btn(flat icon color="primary" @click="removeId(playlistitem.Id)")
                 v-icon delete
@@ -92,7 +92,7 @@ export default {
 
   methods: {
     onresize: _.debounce(function () {
-      this.buffer = Math.floor((window.innerHeight - 350) / this.size)
+      this.buffer = Math.floor((window.innerHeight - 300) / this.size)
     }, 300),
 
     playId (id) {

@@ -5,6 +5,7 @@ v-card
     flat
     dense
   )
+    v-toolbar-side-icon(@click.stop="toggleSidebar()")
     v-btn(icon ripple @click="playPrev")
       v-icon(color="primary lighten-1") fast_rewind
     v-btn(icon ripple @click="playId(-1)")
@@ -13,11 +14,18 @@ v-card
       v-icon(color="primary lighten-1") fast_forward
 
     v-toolbar-title
-      | {{ currentsong.Artist || 'No Artist' }}/{{ currentsong.Title || 'No Title' }}
+      | {{ currentSong.Artist || 'No Artist' }}/{{ currentSong.Title || 'No Title' }}
     v-spacer
-    v-btn(icon ripple @click="clearPlaylist")
+    v-btn(icon ripple @click="removeId(currentSong.Id)")
       v-icon(color="primary lighten-1") delete
-    v-toolbar-side-icon(@click.stop="toggleSidebar()")
+
+    v-menu(bottom left)
+      v-btn(icon slot="activator")
+        v-icon more_vert
+      v-list
+        v-list-tile(key="test" @click="clearPlaylist")
+          v-list-tile-title
+            | Clear playlist
 
 </template>
 
@@ -25,7 +33,7 @@ v-card
 export default {
 
   computed: {
-    currentsong () {
+    currentSong () {
       return this.$store.state.websocket.socket.currentsong
     }
   },
@@ -41,6 +49,10 @@ export default {
 
     playId (id) {
       this.$socket.sendObj({ mutation: 'playid', value: parseInt(id) })
+    },
+
+    removeId (id) {
+      this.$socket.sendObj({ mutation: 'removeid', value: parseInt(id) })
     },
 
     playNext () {

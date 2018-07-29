@@ -4,7 +4,7 @@ v-navigation-drawer.my-sidebar(
   fixed
   :mobile-break-point="1200"
   app
-  right
+  left
   width="500"
 )
 
