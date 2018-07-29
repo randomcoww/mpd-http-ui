@@ -1,5 +1,12 @@
 <template lang="pug">
 v-card.playlist
+
+  v-toolbar(flat dense)
+    v-btn(icon ripple @click="clearPlaylist")
+      v-icon delete
+    v-toolbar-title
+     | Playlist
+
   v-list
     virtual-list(
       :size="this.size"
@@ -92,7 +99,7 @@ export default {
 
   methods: {
     onresize: _.debounce(function () {
-      this.buffer = Math.floor((window.innerHeight - this.size - 250) / this.size)
+      this.buffer = Math.floor((window.innerHeight - 350) / this.size)
     }, 300),
 
     playId (id) {
@@ -101,6 +108,10 @@ export default {
 
     removeId (id) {
       this.$socket.sendObj({ mutation: 'removeid', value: parseInt(id) })
+    },
+
+    clearPlaylist () {
+      this.$socket.sendObj({ mutation: 'clear' })
     },
 
     onMoved (event, data) {
