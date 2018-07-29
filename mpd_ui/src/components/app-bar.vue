@@ -6,15 +6,17 @@ v-card
     dense
   )
     v-btn(icon ripple @click="playPrev")
-      v-icon fast_rewind
+      v-icon(color="primary lighten-1") fast_rewind
     v-btn(icon ripple @click="playId(-1)")
-      v-icon play_arrow
+      v-icon(color="primary lighten-1") play_arrow
     v-btn(icon ripple @click="playNext")
-      v-icon fast_forward
+      v-icon(color="primary lighten-1") fast_forward
 
     v-toolbar-title
       | {{ currentsong.Artist || 'No Artist' }}/{{ currentsong.Title || 'No Title' }}
     v-spacer
+    v-btn(icon ripple @click="clearPlaylist")
+      v-icon(color="primary lighten-1") delete
     v-toolbar-side-icon(@click.stop="toggleSidebar()")
 
 </template>
@@ -31,6 +33,10 @@ export default {
   methods: {
     toggleSidebar () {
       this.$store.dispatch('common/updateSidebar', { visible: !this.$store.state.common.sidebar.visible })
+    },
+
+    clearPlaylist () {
+      this.$socket.sendObj({ mutation: 'clear' })
     },
 
     playId (id) {

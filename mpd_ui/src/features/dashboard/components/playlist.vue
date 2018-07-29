@@ -1,13 +1,6 @@
 <template lang="pug">
 v-card.playlist
 
-  v-toolbar(flat dense)
-    v-btn(icon ripple @click="clearPlaylist")
-      v-icon delete
-    v-toolbar-title
-     | Playlist
-
-  v-list
     virtual-list(
       :size="this.size"
       :remain="this.buffer"
@@ -108,10 +101,6 @@ export default {
 
     removeId (id) {
       this.$socket.sendObj({ mutation: 'removeid', value: parseInt(id) })
-    },
-
-    clearPlaylist () {
-      this.$socket.sendObj({ mutation: 'clear' })
     },
 
     onMoved (event, data) {
