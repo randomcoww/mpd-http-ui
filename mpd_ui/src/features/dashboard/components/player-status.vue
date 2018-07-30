@@ -1,7 +1,7 @@
 <template lang="pug">
 v-card
   audio(
-    src="http://localhost:8000/mpd"
+    src="/stream"
     autoplay="autoplay"
     ref="mpdplayer"
     preload="none"
@@ -47,7 +47,6 @@ v-card
 </template>
 
 <script>
-// import moment from 'moment'
 import _ from 'lodash'
 
 export default {
