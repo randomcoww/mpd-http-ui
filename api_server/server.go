@@ -350,6 +350,9 @@ func (c *Client) readSocketEvents() {
 			size := int(d[2].(float64))
 			// fmt.Printf("Search %s %s %s\n", query, start, size)
 			c.sendSearchMessage(query, start, size)
+
+		case "clear":
+			mpdClient.Conn.Clear()
 		}
 	}
 }
