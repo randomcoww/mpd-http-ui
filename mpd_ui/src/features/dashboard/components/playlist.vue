@@ -1,5 +1,4 @@
 <template lang="pug">
-v-card.playlist
   v-list
     virtual-list(
       :size="this.size"
@@ -8,8 +7,11 @@ v-card.playlist
       :tobottom="onScrollBottom"
     )
       div(v-for="(playlistitem, index) in playlistitems" :index="index" :key="playlistitem.Pos")
-        draggable(v-model="playlistitems" @end="onMoved" :options="{group: 'playlistitems'}" :id="index")
+        draggable(v-model="playlistitems" @end="onMoved" :options="{group: 'playlistitems', handle: '.handle'}" :id="index")
           v-list-tile(@click="")
+            template(v-if="$vuetify.breakpoint.smAndUp")
+              v-list-tile-action.handle
+                v-icon(color="primary") drag_handle
             v-list-tile-action
               v-btn(flat icon color="primary" @click="playId(playlistitem.Id)")
                 v-icon play_arrow
@@ -17,9 +19,10 @@ v-card.playlist
               | {{ playlistitem.Artist || 'No Artist' }}
             v-list-tile-title
               | {{ playlistitem.Title || 'No Title' }}
-            v-list-tile-action
-              v-btn(flat icon color="primary" @click="removeId(playlistitem.Id)")
-                v-icon delete
+            template(v-if="$vuetify.breakpoint.smAndUp")
+              v-list-tile-action
+                v-btn(flat icon color="primary" @click="removeId(playlistitem.Id)")
+                  v-icon delete
 </template>
 
 <script>
@@ -92,7 +95,7 @@ export default {
 
   methods: {
     onresize: _.debounce(function () {
-      this.buffer = Math.floor((window.innerHeight - 300) / this.size)
+      this.buffer = Math.floor((window.innerHeight - 200) / this.size)
     }, 300),
 
     playId (id) {

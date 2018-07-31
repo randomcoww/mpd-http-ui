@@ -5,10 +5,11 @@ const defaults = {
     status: {},
     playlist: [],
     search: [],
-    currentsong: {},
+    currentSong: {},
     elapsed: null,
     duration: null,
-    version: null
+    version: null,
+    databaseUpdateIndex: 0
   }
 }
 
@@ -53,7 +54,7 @@ const websocket = {
     },
 
     currentsong (state, message) {
-      state.socket.currentsong = message.value
+      state.socket.currentSong = message.value
     },
 
     seek (state, message) {
@@ -86,6 +87,10 @@ const websocket = {
       message.value.map(v => {
         state.socket.playlist.splice(v.Pos, 1, v)
       })
+    },
+
+    updatedb (state, message) {
+      state.socket.databaseUpdateIndex += 1
     }
   }
 }

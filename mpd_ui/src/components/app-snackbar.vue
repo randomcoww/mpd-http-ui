@@ -4,7 +4,7 @@ v-snackbar(
   :right="true"
   :timeout='$store.state.common.snackbar.timeout'
   v-model='snackbarActive')
-  | {{ $store.state.common.snackbar.text | truncate(100, '...') }}
+  | {{ $store.state.common.snackbar.text | truncate($vuetify.breakpoint.smAndUp ? 60 : 30, '...') }}
   v-btn(dark='' flat='' @click.native='snackbarActive = false')
     v-icon close
 </template>

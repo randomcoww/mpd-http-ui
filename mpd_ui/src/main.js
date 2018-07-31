@@ -6,7 +6,6 @@ import Vuetify from 'vuetify'
 // import URLSearchParams from 'url-search-params'
 import App from './app'
 import Appbar from './components/app-bar'
-import Appfooter from './components/app-footer'
 import VueNativeSock from 'vue-native-websocket'
 
 Vue.config.productionTip = false
@@ -24,6 +23,7 @@ Vue.use(Vuetify, {
 })
 
 // Websocket
+// Vue.use(VueNativeSock, 'ws://localhost:3000/ws', {
 Vue.use(VueNativeSock, 'ws://' + location.host + '/ws', {
   reconnection: true,
   reconnectionDelay: 3000,
@@ -37,7 +37,6 @@ require('./styles/stylus/main.styl')
 
 // Global Components
 Vue.component('Appbar', Appbar)
-Vue.component('Appfooter', Appfooter)
 
 /* eslint-disable no-new */
 new Vue({
