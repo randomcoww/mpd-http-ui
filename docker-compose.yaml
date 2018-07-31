@@ -6,6 +6,7 @@ services:
       dockerfile: Dockerfile
     ports:
     - "6600:6600"
+    - "8000:8000"
     volumes:
     - ./env/mpd_mount/music:/mpd/music
     - ./env/mpd_mount/logs:/mpd/logs
@@ -34,6 +35,8 @@ services:
     build:
       context: ./api_server
       dockerfile: Dockerfile
+    ports:
+    - "3000:3000"
     links:
     - "mpd:mpd"
     - "elasticsearch:elasticsearch"
@@ -45,13 +48,3 @@ services:
     - "-esurl"
     - "http://elasticsearch:9200"
     restart: on-failure
-  mpd_ui:
-    build:
-      context: ./mpd_ui
-      dockerfile: Dockerfile
-    links:
-    - "mpd:mpd"
-    - "api_server:api_server"
-    restart: on-failure
-    ports:
-    - "8080:8080"

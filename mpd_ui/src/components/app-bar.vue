@@ -5,6 +5,7 @@ v-card
     flat
     dense
   )
+
     v-toolbar-side-icon(@click.stop="toggleSidebar()")
     v-btn(icon ripple @click="playPrev")
       v-icon(color="primary lighten-1") fast_rewind
@@ -13,8 +14,9 @@ v-card
     v-btn(icon ripple @click="playNext")
       v-icon(color="primary lighten-1") fast_forward
 
-    v-toolbar-title
-      | {{ currentSong.Artist || 'No Artist' }}/{{ currentSong.Title || 'No Title' }}
+    template(v-if="$vuetify.breakpoint.smAndUp")
+      v-toolbar-title
+        | {{ currentSong.Artist || 'No Artist' }}/{{ currentSong.Title || 'No Title' }}
     v-spacer
     v-btn(icon ripple @click="removeId(currentSong.Id)")
       v-icon(color="primary lighten-1") delete
@@ -23,7 +25,10 @@ v-card
       v-btn(icon slot="activator")
         v-icon more_vert
       v-list
-        v-list-tile(key="test" @click="clearPlaylist")
+        v-list-tile(@click="startDatabaseUpdate")
+          v-list-tile-title
+            | Start database update
+        v-list-tile(@click="clearPlaylist")
           v-list-tile-title
             | Clear playlist
 
@@ -34,13 +39,17 @@ export default {
 
   computed: {
     currentSong () {
-      return this.$store.state.websocket.socket.currentsong
+      return this.$store.state.websocket.socket.currentSong
     }
   },
 
   methods: {
     toggleSidebar () {
       this.$store.dispatch('common/updateSidebar', { visible: !this.$store.state.common.sidebar.visible })
+    },
+
+    startDatabaseUpdate () {
+      this.$socket.sendObj({ mutation: 'updatedb' })
     },
 
     clearPlaylist () {

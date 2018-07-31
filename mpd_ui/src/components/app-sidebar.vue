@@ -5,12 +5,11 @@ v-navigation-drawer.my-sidebar(
   :mobile-break-point="1200"
   app
   left
-  width="500"
+  :width="600"
 )
 
   v-toolbar(dense flat)
-    v-toolbar-title
-      | Library
+    v-toolbar-side-icon(@click.stop="toggleSidebar()")
     v-spacer
     v-flex(xs8)
       v-text-field(append-icon="search" v-model="searchText" hide-details single-line v-model.lazy="databasequery")
@@ -23,26 +22,25 @@ v-navigation-drawer.my-sidebar(
       :tobottom="onScrollBottom"
     )
       div(v-for="(searchresult, index) in searchresults" :index="index" :key="searchresult.file")
-        draggable(v-model="searchresults" @start="onDragStart" @end="onDragEnd" :options="{group: 'playlistitems'}" :id="searchresult.file")
-          v-list-tile(@click="")
-            v-list-tile-action
-              v-btn(flat icon color="primary" @click="addPathToPlaylist(searchresult.file, -1)")
-                v-icon add
-            v-list-tile-title
-              | {{ searchresult.artist || 'No Artist' }}
-            v-list-tile-title
-              | {{ searchresult.title || 'No Title' }}
+        v-list-tile(@click="")
+          v-list-tile-action
+            v-btn(flat icon color="primary" @click="addPathToPlaylist(searchresult.file, -1)")
+              v-icon add
+          v-list-tile-title
+            | {{ searchresult.artist || 'No Artist' }}
+          v-list-tile-title
+            | {{ searchresult.title || 'No Title' }}
 </template>
 
 <script>
 import VirtualList from 'vue-virtual-scroll-list'
 import _ from 'lodash'
-import draggable from 'vuedraggable'
+// import draggable from 'vuedraggable'
 
 export default {
   components: {
-    VirtualList,
-    draggable
+    VirtualList
+    // draggable
   },
 
   data () {
@@ -100,6 +98,10 @@ export default {
   },
 
   methods: {
+    toggleSidebar () {
+      this.$store.dispatch('common/updateSidebar', { visible: !this.$store.state.common.sidebar.visible })
+    },
+
     onresize: _.debounce(function () {
       this.buffer = Math.floor((window.innerHeight - this.size - 10) / this.size)
     }, 300),

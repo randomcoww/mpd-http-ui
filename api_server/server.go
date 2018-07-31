@@ -253,6 +253,10 @@ func (c *Client) sendSearchMessage(query string, start, size int) {
 	}
 }
 
+func (c *Client) sendUpdateDatabaseMessage() {
+	c.conn.WriteJSON(&socketMessage{Name: "updatedb"})
+}
+
 
 func (c *Client) readSocketEvents() {
 
@@ -353,6 +357,9 @@ func (c *Client) readSocketEvents() {
 
 		case "clear":
 			mpdClient.Conn.Clear()
+
+		case "updatedb":
+			mpdClient.Conn.Update("")
 		}
 	}
 }
@@ -399,6 +406,9 @@ func (c *Client) writeSocketEvents() {
 
 			case "playlist":
 				c.sendPlaylistMessage()
+
+			case "update":
+				c.sendUpdateDatabaseMessage()
 			}
 
 		case <- time.After(1000 * time.Millisecond):
