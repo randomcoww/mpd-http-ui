@@ -5,21 +5,26 @@ v-card
     flat
     dense
   )
-
-    v-toolbar-side-icon(@click.stop="toggleSidebar()")
-    v-btn(icon ripple @click="playPrev")
-      v-icon(color="primary lighten-1") fast_rewind
-    v-btn(icon ripple @click="playId(-1)")
-      v-icon(color="primary lighten-1") play_arrow
-    v-btn(icon ripple @click="playNext")
-      v-icon(color="primary lighten-1") fast_forward
+    v-btn(icon ripple @click="toggleLibrary")
+      v-icon storage
+    v-btn(icon ripple @click="togglePlaylist")
+      v-icon playlist_play
 
     template(v-if="$vuetify.breakpoint.smAndUp")
+      v-btn(icon ripple @click="playPrev")
+        v-icon(color="primary lighten-1") fast_rewind
+      v-btn(icon ripple @click="playId(-1)")
+        v-icon(color="primary lighten-1") play_arrow
+      v-btn(icon ripple @click="playNext")
+        v-icon(color="primary lighten-1") fast_forward
+
       v-toolbar-title
         | {{ currentSong.Artist || 'No Artist' }}/{{ currentSong.Title || 'No Title' }}
     v-spacer
-    v-btn(icon ripple @click="removeId(currentSong.Id)")
-      v-icon(color="primary lighten-1") delete
+
+    template(v-if="$vuetify.breakpoint.smAndUp")
+      v-btn(icon ripple @click="removeId(currentSong.Id)")
+        v-icon(color="primary lighten-1") delete
 
     v-menu(bottom left)
       v-btn(icon slot="activator")
@@ -44,8 +49,12 @@ export default {
   },
 
   methods: {
-    toggleSidebar () {
-      this.$store.dispatch('common/updateSidebar', { visible: !this.$store.state.common.sidebar.visible })
+    togglePlaylist () {
+      this.$store.dispatch('common/togglePlaylist', { visible: !this.$store.state.common.playlist.visible })
+    },
+
+    toggleLibrary () {
+      this.$store.dispatch('common/toggleLibrary', { visible: !this.$store.state.common.library.visible })
     },
 
     startDatabaseUpdate () {

@@ -1,4 +1,19 @@
 <template lang="pug">
+v-navigation-drawer(
+  v-model="isActive"
+  app
+  fixed
+  right
+  :width="800"
+  v-resize="onResize"
+)
+
+  v-toolbar(dense flat)
+    v-icon(color="grey") playlist_play
+    v-spacer
+    v-btn(icon ripple @click="togglePlaylist")
+      v-icon close
+
   v-list
     virtual-list(
       :size="this.size"
@@ -44,8 +59,6 @@ export default {
       end: 0,
       // preload item count
       buffer: 10,
-      // initial load item count
-      initialBuffer: 40,
       // save loaded state to refresh items
       bufferedStart: 0,
       bufferedEnd: 0,
@@ -54,6 +67,15 @@ export default {
   },
 
   computed: {
+    isActive: {
+      get () {
+        return this.$store.state.common.playlist.visible
+      },
+      set (val) {
+        this.$store.dispatch('common/togglePlaylist', { visible: val })
+      }
+    },
+
     playlistitems: {
       get: function () {
         return this.$store.state.websocket.socket.playlist
@@ -63,18 +85,13 @@ export default {
     },
     playlistVersion () {
       return this.$store.state.websocket.socket.version
-    },
-    style () {
-      return {
-        'height': this.size + 'px'
-      }
     }
   },
 
   watch: {
     playlistVersion: function () {
       if (this.end <= 0) {
-        this.end = this.initialBuffer
+        this.end = this.buffer
       }
       // console.info('playlistversion', this.start, this.end)
       this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.start, this.end] })
@@ -82,21 +99,18 @@ export default {
   },
 
   mounted () {
-    window.addEventListener('resize', this.onresize)
-    this.onresize()
-  },
-  beforeDestroy () {
-    window.removeEventListener('resize', this.onresize)
-  },
-
-  created () {
-    this.$socket.sendObj({ mutation: 'playlistupdate', value: [0, this.initialBuffer] })
+    this.onResize()
+    this.$socket.sendObj({ mutation: 'playlistupdate', value: [0, this.buffer * 2] })
   },
 
   methods: {
-    onresize: _.debounce(function () {
-      this.buffer = Math.floor((window.innerHeight - 200) / this.size)
-    }, 300),
+    togglePlaylist () {
+      this.$store.dispatch('common/togglePlaylist', { visible: !this.$store.state.common.playlist.visible })
+    },
+
+    onResize () {
+      this.buffer = Math.floor((window.innerHeight - this.size - 10) / this.size)
+    },
 
     playId (id) {
       this.$socket.sendObj({ mutation: 'playid', value: parseInt(id) })
@@ -116,7 +130,7 @@ export default {
     },
 
     onScrollBottom () {
-      let end = this.end + (this.buffer * 4)
+      let end = this.end + this.buffer
       this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.end, end] })
     },
 

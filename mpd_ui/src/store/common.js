@@ -1,7 +1,10 @@
 // Common State.
 const defaults = {
-  sidebar: {
+  playlist: {
     visible: true
+  },
+  library: {
+    visible: false
   },
   title: '',
   layout: 'DefaultLayout',
@@ -30,8 +33,12 @@ export default {
   state: Object.assign({}, defaults),
 
   mutations: {
-    updateSidebar (state, options) {
-      state.sidebar = Object.assign({}, defaults.sidebar, options)
+    togglePlaylist (state, options) {
+      state.playlist = Object.assign({}, defaults.playlist, options)
+    },
+
+    toggleLibrary (state, options) {
+      state.library = Object.assign({}, defaults.library, options)
     },
 
     updateTitle (state, title) {
@@ -56,8 +63,12 @@ export default {
   },
 
   actions: {
-    updateSidebar ({ commit }, options) {
-      commit('updateSidebar', options)
+    toggleLibrary ({ commit }, options) {
+      commit('toggleLibrary', options)
+    },
+
+    togglePlaylist ({ commit }, options) {
+      commit('togglePlaylist', options)
     },
 
     updateTitle ({ commit }, title) {

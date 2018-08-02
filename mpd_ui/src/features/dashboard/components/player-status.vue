@@ -2,7 +2,7 @@
   v-list(two-line subheader)
 
     audio(
-      src="/mpd"
+      :src="mpdUrl"
       autoplay="autoplay"
       ref="mpdplayer"
       preload="none"
@@ -63,6 +63,10 @@ export default {
   },
 
   computed: {
+    mpdUrl () {
+      return process.env.NODE_ENV === 'produciton' ? '/mpd' : 'http://localhost:8000/mpd'
+    },
+
     currentSong () {
       return this.$store.state.websocket.socket.currentSong
     },
@@ -83,14 +87,14 @@ export default {
 
   watch: {
     currentSong: function () {
-      this.reloadAudio()
+      // this.reloadAudio()
     },
     databaseUpdateIndex: function () {
       this.showSnackMessage('Received database update')
     }
   },
 
-  created () {
+  mounted () {
     this.$socket.sendObj({ mutation: 'currentsong' })
   },
 
