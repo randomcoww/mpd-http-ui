@@ -14,12 +14,15 @@ MPD (stream):
 REST API:
 - http://localhost:3000
 
-UI:
-- http://localhost:8080
-
-Remove containers to test reindexing:
+ES data remains on the container and won't be rebuilt each run. Remove containers to force rebuild:
 
     docker-compose rm -f
+
+#### UI setup
+
+    cd mpd_ui
+    npm install
+    npm run dev
 
 #### Environment test
 
