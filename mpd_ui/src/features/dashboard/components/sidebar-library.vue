@@ -1,18 +1,21 @@
 <template lang="pug">
-v-navigation-drawer.my-sidebar(
+v-navigation-drawer(
   v-model="isActive"
-  fixed
-  :mobile-break-point="1200"
   app
+  fixed
   left
-  :width="600"
+  :width="800"
+  temporary=true
+  v-resize="onResize"
 )
 
   v-toolbar(dense flat)
-    v-toolbar-side-icon(@click.stop="toggleSidebar()")
+    v-icon(color="grey") storage
     v-spacer
     v-flex(xs8)
       v-text-field(append-icon="search" v-model="searchText" hide-details single-line v-model.lazy="databasequery")
+    v-btn(icon ripple @click="toggleLibrary")
+      v-icon close
 
   v-list
     virtual-list(
@@ -61,12 +64,13 @@ export default {
   computed: {
     isActive: {
       get () {
-        return this.$store.state.common.sidebar.visible
+        return this.$store.state.common.library.visible
       },
       set (val) {
-        this.$store.dispatch('common/updateSidebar', { visible: val })
+        this.$store.dispatch('common/toggleLibrary', { visible: val })
       }
     },
+
     searchresults: {
       get: function () {
         return this.$store.state.websocket.socket.search
@@ -83,28 +87,26 @@ export default {
 
   watch: {
     databasequery: _.debounce(function () {
+      let requestCount = this.buffer * 2
+
       this.requestStart = 0
-      this.sendSearch(this.requestStart, this.requestCount)
-      this.requestStart += this.requestCount
+      this.sendSearch(this.requestStart, requestCount)
+      this.requestStart += requestCount
     }, 300)
   },
 
   mounted () {
-    window.addEventListener('resize', this.onresize)
-    this.onresize()
-  },
-  beforeDestroy () {
-    window.removeEventListener('resize', this.onresize)
+    this.onResize()
   },
 
   methods: {
-    toggleSidebar () {
-      this.$store.dispatch('common/updateSidebar', { visible: !this.$store.state.common.sidebar.visible })
+    toggleLibrary () {
+      this.$store.dispatch('common/toggleLibrary', { visible: !this.$store.state.common.library.visible })
     },
 
-    onresize: _.debounce(function () {
+    onResize () {
       this.buffer = Math.floor((window.innerHeight - this.size - 10) / this.size)
-    }, 300),
+    },
 
     sendSearch (start, count) {
       // console.info('search', start, count)

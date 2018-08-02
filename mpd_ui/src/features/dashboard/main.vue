@@ -1,22 +1,23 @@
 <template lang="pug">
 v-card(dense height="100%")
+  sidebar-library()
+  sidebar-playlist()
   player-status()
-  v-divider(inset)
-  playlist()
-
 </template>
 
 <script>
 // import store from './store' // eslint-disable-line no-unused-vars
-import Playlist from './components/playlist'
 import PlayerStatus from './components/player-status'
+import SidebarLibrary from './components/sidebar-library'
+import SidebarPlaylist from './components/sidebar-playlist'
 
 export default {
   name: 'Dashboard',
 
   components: {
-    Playlist,
-    PlayerStatus
+    PlayerStatus,
+    SidebarLibrary,
+    SidebarPlaylist
   },
 
   mounted () {

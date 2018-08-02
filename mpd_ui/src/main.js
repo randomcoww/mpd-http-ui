@@ -23,8 +23,7 @@ Vue.use(Vuetify, {
 })
 
 // Websocket
-// Vue.use(VueNativeSock, 'ws://localhost:3000/ws', {
-Vue.use(VueNativeSock, 'ws://' + location.host + '/ws', {
+Vue.use(VueNativeSock, process.env.NODE_ENV === 'produciton' ? 'ws://' + location.host + '/ws' : 'ws://localhost:3000/ws', {
   reconnection: true,
   reconnectionDelay: 3000,
   store: store,

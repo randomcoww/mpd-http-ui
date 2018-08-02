@@ -1,7 +1,7 @@
 FROM node:10-alpine as BUILD
 
 WORKDIR /build
-ADD . /build
+COPY . .
 
 RUN set -x \
   \
