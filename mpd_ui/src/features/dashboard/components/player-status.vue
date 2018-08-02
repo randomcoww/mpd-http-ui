@@ -64,7 +64,7 @@ export default {
 
   computed: {
     mpdUrl () {
-      return process.env.NODE_ENV === 'produciton' ? '/mpd' : 'http://localhost:8000/mpd'
+      return process.env.NODE_ENV === 'development' ? 'http://localhost:8000/mpd' : '/mpd'
     },
 
     currentSong () {
