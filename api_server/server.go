@@ -21,6 +21,7 @@ var (
 	mpdClient *mpd_handler.MpdClient
 	esClient *es_handler.EsClient
 	mpdEvent *mpd_event.MpdEvent
+	playlistVersion int
 
 	upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -63,6 +64,8 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 	mpdClient = mpd_handler.NewMpdClient("tcp", mpdUrl)
 	esClient = es_handler.NewEsClient(esUrl, esIndex, esDocument, "")
 	mpdEvent = mpd_event.NewEventWatcher("tcp", mpdUrl)
+
+	playlistVersion = 0
 
 	// websocket hub
 	hub := newHub()
@@ -119,7 +122,15 @@ func (h *Hub) eventBroadcaster() {
 		select {
 		case e := <-mpdEvent.Event:
 			fmt.Printf("Got MPD event: %s\n", e)
-			h.broadcast <-[]byte(e)
+
+			switch e {
+			case "playlist":
+				getPlaylistChanges()
+				h.broadcast <-[]byte(e)
+
+			default:
+				h.broadcast <-[]byte(e)
+			}
 		}
 	}
 }
@@ -165,13 +176,13 @@ func (c *Client) sendPlaylistMessage() {
 		return
 	}
 
-	playlistlength, err := strconv.Atoi(attrs["playlistlength"])
+	playlistLength, err := strconv.Atoi(attrs["playlistlength"])
 	if err != nil {
 		return
 	}
 
 	message[0] = playlist
-	message[1] = playlistlength
+	message[1] = playlistLength
 
 	// p, err := mpdClient.Conn.PlaylistInfo(-1, -1)
 	// if err != nil {
@@ -201,6 +212,39 @@ func (c *Client) sendPlaylistUpdateMessage(start, end int) {
 		fmt.Printf("Failed to write playlistupdate message %s\n", err)
 		return
 	}
+}
+
+func getPlaylistChanges() {
+	batchSize := 1000
+	batchIndex := 0
+
+  // get playlist length and version
+	attr, err := mpdClient.Conn.Status()
+	if err != nil {
+		return
+	}
+
+	playlist, err := strconv.Atoi(attr["playlist"])
+	if err != nil {
+		return
+	}
+
+	playlistLength, err := strconv.Atoi(attr["playlistlength"])
+	if err != nil {
+		return
+	}
+
+	attrs, _ := mpdClient.PlChangePosId(playlistVersion, batchIndex, batchSize)
+	for batchIndex < playlistLength {
+
+		for _, v := range attrs {
+			fmt.Printf("playlist changes %s\n", v["Id"])
+		}
+		batchIndex += batchSize
+		attrs, _ = mpdClient.PlChangePosId(playlistVersion, batchIndex, batchSize)
+	}
+
+	playlistVersion = playlist
 }
 
 func (c *Client) sendSeekMessage() {
