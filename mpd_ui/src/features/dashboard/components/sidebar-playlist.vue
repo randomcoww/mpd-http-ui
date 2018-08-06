@@ -83,9 +83,6 @@ export default {
       set: function () {
       }
     }
-    // playlistVersion () {
-    //   return this.$store.state.websocket.socket.version
-    // }
   },
 
   watch: {
@@ -93,8 +90,7 @@ export default {
       if (this.end <= 0) {
         this.end = this.buffer
       }
-      // console.info('playlistversion', this.start, this.end)
-      this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.start, this.end] })
+      this.updatePlaylist()
     }
   },
 
@@ -134,55 +130,41 @@ export default {
       this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.end, end] })
     },
 
+    updatePlaylist () {
+      let i
+      let foundNull = false
+      let updateStart = this.start
+      let updateEnd = this.end
+
+      for (i = this.start; i <= this.end; i++) {
+        if (foundNull) {
+          // if ('Id' in this.$store.state.websocket.socket.playlist[i]) {
+          //   updateEnd = i
+          //   break
+          // }
+        } else {
+          if (
+            typeof (this.$store.state.websocket.socket.playlist[i]) === 'undefined' ||
+            !('Id' in this.$store.state.websocket.socket.playlist[i])
+          ) {
+            foundNull = true
+            updateStart = i
+          }
+        }
+      }
+
+      if (foundNull) {
+        console.info('Playlist update', updateStart, updateEnd)
+        this.$socket.sendObj({ mutation: 'playlistupdate', value: [updateStart, updateEnd] })
+      }
+    },
+
     // playlist may have updated - refresh view as they become visible
     onScroll: _.debounce(function (event, data) {
       this.start = data['start']
       this.end = data['end']
 
-      var i
-      for (i = this.start; i <= this.end; i++) {
-        if (this.$store.state.websocket.socket.playlist[i] === null) {
-          this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.start, this.end] })
-          return
-        }
-      }
-
-      // scroll down refresh
-      // if (this.end > this.bufferedEnd) {
-      //   let start = this.bufferedEnd
-      //   if (start < this.start) {
-      //     start = this.start
-      //   }
-
-      //   let end = this.end + this.buffer
-
-      //   // console.info('down_request', start, end)
-      //   this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, end] })
-
-      //   this.bufferedStart = this.start
-      //   this.bufferedEnd = end
-      //   return
-      // }
-
-      // // scroll up refresh
-      // if (this.start < this.bufferedStart) {
-      //   // buffer start to avoid making many requests
-      //   let start = this.start - this.buffer
-      //   if (start < 0) {
-      //     start = 0
-      //   }
-
-      //   let end = this.bufferedStart
-      //   if (end > this.end) {
-      //     end = this.end
-      //   }
-
-      //   // console.info('up_request', start, end)
-      //   this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, end] })
-
-      //   this.bufferedStart = start
-      //   this.bufferedEnd = this.end
-      // }
+      this.updatePlaylist()
     }, 300)
   }
 }
