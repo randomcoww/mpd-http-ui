@@ -132,28 +132,34 @@ export default {
 
     updatePlaylist () {
       let i
-      let foundNull = false
+      let foundNullStart = false
+      let foundNullEnd = false
       let updateStart = this.start
       let updateEnd = this.end
 
       for (i = this.start; i <= this.end; i++) {
-        if (foundNull) {
-          // if ('Id' in this.$store.state.websocket.socket.playlist[i]) {
-          //   updateEnd = i
-          //   break
-          // }
-        } else {
-          if (
-            typeof (this.$store.state.websocket.socket.playlist[i]) === 'undefined' ||
-            !('Id' in this.$store.state.websocket.socket.playlist[i])
-          ) {
-            foundNull = true
-            updateStart = i
-          }
+        if (
+          typeof (this.$store.state.websocket.socket.playlist[i]) === 'undefined' ||
+          !('Id' in this.$store.state.websocket.socket.playlist[i])
+        ) {
+          foundNullStart = true
+          updateStart = i
+          break
         }
       }
 
-      if (foundNull) {
+      // for (i = this.end; i >= this.start; i--) {
+      //   if (
+      //     typeof (this.$store.state.websocket.socket.playlist[i]) === 'undefined' ||
+      //     !('Id' in this.$store.state.websocket.socket.playlist[i])
+      //   ) {
+      //     foundNullEnd = true
+      //     updateEnd = i
+      //     break
+      //   }
+      // }
+
+      if (foundNullStart || foundNullEnd) {
         console.info('Playlist update', updateStart, updateEnd)
         this.$socket.sendObj({ mutation: 'playlistupdate', value: [updateStart, updateEnd] })
       }
