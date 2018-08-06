@@ -5,31 +5,32 @@
 package mpd_handler
 
 import (
+	"errors"
 	"fmt"
 	"time"
-	"errors"
+
 	mpd "github.com/fhs/gompd/mpd"
 )
 
 type MpdClient struct {
-	up chan struct {}
-	down chan struct{}
+	up       chan struct{}
+	down     chan struct{}
 	pingDown chan struct{}
-	Conn *mpd.Client
-	proto string
-	addr string
-	Ready chan struct{}
+	Conn     *mpd.Client
+	proto    string
+	addr     string
+	Ready    chan struct{}
 }
 
 // create new MPD client
-func NewMpdClient(proto, addr string) (*MpdClient) {
+func NewMpdClient(proto, addr string) *MpdClient {
 	c := &MpdClient{
-		up: make(chan struct{}, 1),
-		down: make(chan struct{}, 1),
+		up:       make(chan struct{}, 1),
+		down:     make(chan struct{}, 1),
 		pingDown: make(chan struct{}, 1),
 
 		proto: proto,
-		addr: addr,
+		addr:  addr,
 
 		// for external use
 		Ready: make(chan struct{}, 1),
@@ -40,7 +41,6 @@ func NewMpdClient(proto, addr string) (*MpdClient) {
 
 	return c
 }
-
 
 func (c *MpdClient) setState(ch chan struct{}) {
 	select {
@@ -59,8 +59,7 @@ func (c *MpdClient) drainState(ch chan struct{}) {
 	}
 }
 
-
-func (c *MpdClient) connect() (error) {
+func (c *MpdClient) connect() error {
 	fmt.Printf("Connecting to MPD...\n")
 	conn, err := mpd.Dial(c.proto, c.addr)
 
@@ -74,7 +73,6 @@ func (c *MpdClient) connect() (error) {
 
 	return nil
 }
-
 
 func (c *MpdClient) reconnectLoop() {
 	for {
@@ -117,10 +115,9 @@ func (c *MpdClient) reconnectLoop() {
 	}
 }
 
-
 // lookup song metadata for elasticsearch index
 // loop with reconnect attempts to make sure this happens
-func (c *MpdClient) GetDatabaseItem(mpdPath string) (map[string]string) {
+func (c *MpdClient) GetDatabaseItem(mpdPath string) map[string]string {
 	for {
 		attrs, err := c.Conn.ListInfo(mpdPath)
 

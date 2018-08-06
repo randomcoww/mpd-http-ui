@@ -5,10 +5,11 @@
 package es_handler
 
 import (
-	"fmt"
 	"context"
-	"time"
 	"errors"
+	"fmt"
+	"time"
+
 	elastic "gopkg.in/olivere/elastic.v5"
 )
 
@@ -16,17 +17,16 @@ var (
 	ctx = context.Background()
 )
 
-
 type EsClient struct {
-	up chan struct{}
-	down chan struct{}
-	indexDown chan struct{}
+	up          chan struct{}
+	down        chan struct{}
+	indexDown   chan struct{}
 	bulkRequest chan struct{}
 
-	url string
-	index string
+	url       string
+	index     string
 	indexType string
-	mapping string
+	mapping   string
 
 	conn *elastic.Client
 	bulk *elastic.BulkService
@@ -34,19 +34,18 @@ type EsClient struct {
 	Ready chan struct{}
 }
 
-
 // new ES client
-func NewEsClient(url, index, indexType, mapping string) (*EsClient) {
+func NewEsClient(url, index, indexType, mapping string) *EsClient {
 	c := &EsClient{
-		up: make(chan struct{}, 1),
-		down: make(chan struct{}, 1),
-		indexDown: make(chan struct{}, 1),
+		up:          make(chan struct{}, 1),
+		down:        make(chan struct{}, 1),
+		indexDown:   make(chan struct{}, 1),
 		bulkRequest: make(chan struct{}, 1),
 
-		url: url,
-		index: index,
+		url:       url,
+		index:     index,
 		indexType: indexType,
-		mapping: mapping,
+		mapping:   mapping,
 
 		Ready: make(chan struct{}, 1),
 	}
@@ -57,7 +56,6 @@ func NewEsClient(url, index, indexType, mapping string) (*EsClient) {
 
 	return c
 }
-
 
 func (c *EsClient) setState(ch chan struct{}) {
 	select {
@@ -75,7 +73,6 @@ func (c *EsClient) drainState(ch chan struct{}) {
 		}
 	}
 }
-
 
 func (c *EsClient) processLoop() {
 	for {
@@ -120,7 +117,6 @@ func (c *EsClient) processLoop() {
 	}
 }
 
-
 // run bulk processing job
 func (c *EsClient) processBulk() {
 	for {
@@ -163,9 +159,8 @@ func (c *EsClient) processBulk() {
 	}
 }
 
-
 // get connection
-func (c *EsClient) connect() (error) {
+func (c *EsClient) connect() error {
 	fmt.Printf("Connecting to ES...\n")
 	conn, err := elastic.NewSimpleClient(elastic.SetURL(c.url))
 
@@ -181,9 +176,8 @@ func (c *EsClient) connect() (error) {
 	return nil
 }
 
-
 // create index with provided mapping
-func (c *EsClient) getOrCreateIndex() (error) {
+func (c *EsClient) getOrCreateIndex() error {
 	exists, err := c.conn.IndexExists(c.index).Do(ctx)
 	if err != nil {
 		return err
@@ -207,7 +201,6 @@ func (c *EsClient) getOrCreateIndex() (error) {
 	return nil
 }
 
-
 // Add index to next bulk update
 func (c *EsClient) IndexBulk(id string, s interface{}) {
 	c.bulk.Add(elastic.NewBulkIndexRequest().
@@ -228,7 +221,6 @@ func (c *EsClient) DeleteBluk(id string) {
 
 	c.setState(c.bulkRequest)
 }
-
 
 // search database - go through elasticsearch
 func (c *EsClient) Get(file string) (*elastic.GetResult, error) {
