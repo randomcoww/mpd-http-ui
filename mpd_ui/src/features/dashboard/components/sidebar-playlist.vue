@@ -21,7 +21,7 @@ v-navigation-drawer(
       :onscroll="onScroll"
       :tobottom="onScrollBottom"
     )
-      div(v-for="(playlistitem, index) in playlistitems" :index="index" :key="playlistitem.Pos")
+      div(v-for="(playlistitem, index) in playlistitems" :index="index" :key="playlistitem.Id")
         draggable(v-model="playlistitems" @end="onMoved" :options="{group: 'playlistitems', handle: '.handle'}" :id="index")
           v-list-tile(@click="")
             template(v-if="$vuetify.breakpoint.smAndUp")
@@ -82,14 +82,14 @@ export default {
       },
       set: function () {
       }
-    },
-    playlistVersion () {
-      return this.$store.state.websocket.socket.version
     }
+    // playlistVersion () {
+    //   return this.$store.state.websocket.socket.version
+    // }
   },
 
   watch: {
-    playlistVersion: function () {
+    playlistitems: function () {
       if (this.end <= 0) {
         this.end = this.buffer
       }
@@ -139,42 +139,50 @@ export default {
       this.start = data['start']
       this.end = data['end']
 
+      var i
+      for (i = this.start; i <= this.end; i++) {
+        if (this.$store.state.websocket.socket.playlist[i] === null) {
+          this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.start, this.end] })
+          return
+        }
+      }
+
       // scroll down refresh
-      if (this.end > this.bufferedEnd) {
-        let start = this.bufferedEnd
-        if (start < this.start) {
-          start = this.start
-        }
+      // if (this.end > this.bufferedEnd) {
+      //   let start = this.bufferedEnd
+      //   if (start < this.start) {
+      //     start = this.start
+      //   }
 
-        let end = this.end + this.buffer
+      //   let end = this.end + this.buffer
 
-        // console.info('down_request', start, end)
-        this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, end] })
+      //   // console.info('down_request', start, end)
+      //   this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, end] })
 
-        this.bufferedStart = this.start
-        this.bufferedEnd = end
-        return
-      }
+      //   this.bufferedStart = this.start
+      //   this.bufferedEnd = end
+      //   return
+      // }
 
-      // scroll up refresh
-      if (this.start < this.bufferedStart) {
-        // buffer start to avoid making many requests
-        let start = this.start - this.buffer
-        if (start < 0) {
-          start = 0
-        }
+      // // scroll up refresh
+      // if (this.start < this.bufferedStart) {
+      //   // buffer start to avoid making many requests
+      //   let start = this.start - this.buffer
+      //   if (start < 0) {
+      //     start = 0
+      //   }
 
-        let end = this.bufferedStart
-        if (end > this.end) {
-          end = this.end
-        }
+      //   let end = this.bufferedStart
+      //   if (end > this.end) {
+      //     end = this.end
+      //   }
 
-        // console.info('up_request', start, end)
-        this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, end] })
+      //   // console.info('up_request', start, end)
+      //   this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, end] })
 
-        this.bufferedStart = start
-        this.bufferedEnd = this.end
-      }
+      //   this.bufferedStart = start
+      //   this.bufferedEnd = this.end
+      // }
     }, 300)
   }
 }

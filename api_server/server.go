@@ -1,34 +1,35 @@
 package main
 
 import (
-	"fmt"
-	"time"
-	"log"
 	"encoding/json"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/websocket"
+	"fmt"
+	"log"
 	"net/http"
 	"strconv"
-	mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
-	mpd_event "github.com/randomcoww/go-mpd-es/mpd_event"
+	"time"
+
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	es_handler "github.com/randomcoww/go-mpd-es/es_handler"
+	mpd_event "github.com/randomcoww/go-mpd-es/mpd_event"
+	mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
 	// es_handler "local/es_handler"
 )
 
 var (
 	esIndex, esDocument = "songs", "song"
-	mpdClient *mpd_handler.MpdClient
-	esClient *es_handler.EsClient
-	mpdEvent *mpd_event.MpdEvent
-	playlistVersion int
+	mpdClient           *mpd_handler.MpdClient
+	esClient            *es_handler.EsClient
+	mpdEvent            *mpd_event.MpdEvent
+	playlistVersion     int
+	playlistLength      int
 
 	upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
 )
-
 
 // Client is a middleman between the websocket connection and the hub.
 type Client struct {
@@ -41,22 +42,19 @@ type Client struct {
 	send chan []byte
 }
 
-
 const (
 	// Time allowed to write the file to the client.
 	writeWait = 10 * time.Second
 )
-
 
 type response struct {
 	Message string
 }
 
 type socketMessage struct {
-	Name string `json:"mutation"`
+	Name string      `json:"mutation"`
 	Data interface{} `json:"value"`
 }
-
 
 func NewServer(listenUrl, mpdUrl, esUrl string) {
 
@@ -64,8 +62,6 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 	mpdClient = mpd_handler.NewMpdClient("tcp", mpdUrl)
 	esClient = es_handler.NewEsClient(esUrl, esIndex, esDocument, "")
 	mpdEvent = mpd_event.NewEventWatcher("tcp", mpdUrl)
-
-	playlistVersion = 0
 
 	// websocket hub
 	hub := newHub()
@@ -97,7 +93,10 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 	<-mpdClient.Ready
 	<-esClient.Ready
 
-  // set mpd repeat by default
+	// playlistVersion, playlistLength, _ = getPlaylistStatus()
+	updatePlaylistStatus()
+
+	// set mpd repeat by default
 	mpdClient.Conn.Repeat(true)
 
 	// serve http
@@ -105,8 +104,7 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 	log.Fatal(http.ListenAndServe(listenUrl, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(r)))
 }
 
-
-func parseNum(input string) (int) {
+func parseNum(input string) int {
 	v, err := strconv.Atoi(input)
 	if err != nil {
 		fmt.Printf("Error parsing param %s: %s\n", input, err)
@@ -116,7 +114,6 @@ func parseNum(input string) (int) {
 	return v
 }
 
-
 func (h *Hub) eventBroadcaster() {
 	for {
 		select {
@@ -125,16 +122,16 @@ func (h *Hub) eventBroadcaster() {
 
 			switch e {
 			case "playlist":
-				getPlaylistChanges()
-				h.broadcast <-[]byte(e)
+				// getPlaylistChanges()
+				// sendPlaylistChanges()
+				h.broadcast <- []byte(e)
 
 			default:
-				h.broadcast <-[]byte(e)
+				h.broadcast <- []byte(e)
 			}
 		}
 	}
 }
-
 
 func (c *Client) sendStatusMessage() {
 	attrs, err := mpdClient.Conn.Status()
@@ -162,42 +159,24 @@ func (c *Client) sendCurrentSongMessage() {
 	}
 }
 
-// respond to MPD playist event - return current playlist length
-func (c *Client) sendPlaylistMessage() {
+func updatePlaylistStatus() error {
 	attrs, err := mpdClient.Conn.Status()
 	if err != nil {
-		return
+		return err
 	}
 
-	message := make([]int, 2)
-
-	playlist, err := strconv.Atoi(attrs["playlist"])
+	playlistVersion, err = strconv.Atoi(attrs["playlist"])
 	if err != nil {
-		return
+		return err
 	}
 
-	playlistLength, err := strconv.Atoi(attrs["playlistlength"])
+	playlistLength, err = strconv.Atoi(attrs["playlistlength"])
 	if err != nil {
-		return
+		return err
 	}
 
-	message[0] = playlist
-	message[1] = playlistLength
-
-	// p, err := mpdClient.Conn.PlaylistInfo(-1, -1)
-	// if err != nil {
-	// 	return
-	// }
-	// for i, j := range p {
-	// 	fmt.Printf("%s %s %s\n", i, j)
-	// }
-
-  // send playlist and playlistlength
-	err = c.conn.WriteJSON(&socketMessage{Data: message, Name: "playlist"})
-	if err != nil {
-		fmt.Printf("Failed to write playlist message %s\n", err)
-		return
-	}
+	return nil
+	// return playlist, playlistLength, nil
 }
 
 // send playlist info
@@ -214,37 +193,124 @@ func (c *Client) sendPlaylistUpdateMessage(start, end int) {
 	}
 }
 
-func getPlaylistChanges() {
-	batchSize := 1000
-	batchIndex := 0
+func (c *Client) sendPlaylistChanges() {
+	curPlaylistLength := playlistLength
+	curPlaylistVersion := playlistVersion
+	updatePlaylistStatus()
 
-  // get playlist length and version
-	attr, err := mpdClient.Conn.Status()
-	if err != nil {
-		return
-	}
+	fmt.Printf("MPD playlist update length: %v -> %v\n", curPlaylistLength, playlistLength)
+	fmt.Printf("MPD playlist update version: %v -> %v\n", curPlaylistVersion, playlistVersion)
 
-	playlist, err := strconv.Atoi(attr["playlist"])
-	if err != nil {
-		return
-	}
+	message := make([]int, 2)
 
-	playlistLength, err := strconv.Atoi(attr["playlistlength"])
-	if err != nil {
-		return
-	}
+	if playlistLength > curPlaylistLength {
+		// Behavior for add to playlist
+		// 0. song1
+		// 1. song2 <-- added
+		// 2. song3 <-- added
+		// 3. song4
+		// 4. song5
+		// Receives: start: 0, end: 3 (new length of playlist)
+		addCount := playlistLength - curPlaylistLength
+		changeStartPos, _, err := getPlaylistChangePos(curPlaylistVersion)
 
-	attrs, _ := mpdClient.PlChangePosId(playlistVersion, batchIndex, batchSize)
-	for batchIndex < playlistLength {
-
-		for _, v := range attrs {
-			fmt.Printf("playlist changes %s\n", v["Id"])
+		if err != nil {
+			return
 		}
-		batchIndex += batchSize
-		attrs, _ = mpdClient.PlChangePosId(playlistVersion, batchIndex, batchSize)
+		// send socket event
+		// changeStartPos, changeStartPos + addCount
+		fmt.Printf("MPD playlist add positions at: %v count: %v\n", changeStartPos, addCount)
+
+		message[0] = changeStartPos
+		message[1] = addCount
+
+		err = c.conn.WriteJSON(&socketMessage{Data: message, Name: "playlistadd"})
+		if err != nil {
+			fmt.Printf("Failed to write playlist message %s\n", err)
+			return
+		}
+
+	} else if playlistLength < curPlaylistLength {
+		// Behavior for removed from playlist
+		// 0. song1
+		// 1. song2 <-- deleting
+		// 2. song3 <-- deleting
+		// 3. song4
+		// 4. song5
+		// Receives: start: 1, end: 2 (new length of playlist)
+		removeCount := curPlaylistLength - playlistLength
+		changeStartPos, _, err := getPlaylistChangePos(curPlaylistVersion)
+
+		if err != nil {
+			return
+		}
+		// send socket event
+		// changeStartPos, changeStartPos + removeCount
+		fmt.Printf("MPD playlist delete at: %v count: %v\n", changeStartPos, removeCount)
+
+		message[0] = changeStartPos
+		message[1] = removeCount
+
+		err = c.conn.WriteJSON(&socketMessage{Data: message, Name: "playlistdelete"})
+		if err != nil {
+			fmt.Printf("Failed to write playlist message %s\n", err)
+			return
+		}
+
+	} else {
+		// Fallback for generic playlist changes (move, shuffle, etc)
+		changeStartPos, changeEndPos, err := getPlaylistChangePos(curPlaylistVersion)
+		changeCount := changeEndPos - changeStartPos + 1
+
+		if err != nil {
+			return
+		}
+
+		fmt.Printf("MPD playlist moved positions at: %v count: %v\n", changeStartPos, changeCount)
+
+		message[0] = changeStartPos
+		message[1] = changeCount
+
+		err = c.conn.WriteJSON(&socketMessage{Data: message, Name: "playlistmove"})
+		if err != nil {
+			fmt.Printf("Failed to write playlist message %s\n", err)
+			return
+		}
+	}
+}
+
+// when playlist changes, get the start and end index of change
+func getPlaylistChangePos(playlistVersion int) (int, int, error) {
+	attrs, err := mpdClient.PlChangePosId(playlistVersion, -1, -1)
+
+	if err != nil {
+		return 0, 0, err
 	}
 
-	playlistVersion = playlist
+	var (
+		startPos = 0
+		endPos   = 0
+	)
+
+	v, ok := attrs[0]["cpos"]
+	if ok {
+		i, err := strconv.Atoi(v)
+		if err != nil {
+			return 0, 0, err
+		}
+		startPos = i
+	}
+
+	v, ok = attrs[len(attrs)-1]["cpos"]
+	if ok {
+		i, err := strconv.Atoi(v)
+		if err != nil {
+			return 0, 0, err
+		}
+		endPos = i
+	}
+
+	return startPos, endPos, nil
 }
 
 func (c *Client) sendSeekMessage() {
@@ -282,7 +348,7 @@ func (c *Client) sendSearchMessage(query string, start, size int) {
 
 	message := make([]interface{}, 2)
 
-	var	result []*json.RawMessage
+	var result []*json.RawMessage
 	for _, hits := range search.Hits.Hits {
 		result = append(result, hits.Source)
 	}
@@ -300,7 +366,6 @@ func (c *Client) sendSearchMessage(query string, start, size int) {
 func (c *Client) sendUpdateDatabaseMessage() {
 	c.conn.WriteJSON(&socketMessage{Name: "updatedb"})
 }
-
 
 func (c *Client) readSocketEvents() {
 
@@ -341,11 +406,11 @@ func (c *Client) readSocketEvents() {
 			d := v.Data.([]interface{})
 			start := int(d[0].(float64))
 			end := int(d[1].(float64))
-      // respond with playlist
+			// respond with playlist
 			c.sendPlaylistUpdateMessage(start, end)
 
 		case "currentsong":
-      // respond with current song
+			// respond with current song
 			c.sendCurrentSongMessage()
 
 		case "playlistmove":
@@ -355,12 +420,12 @@ func (c *Client) readSocketEvents() {
 			end := int(d[1].(float64))
 			position := int(d[2].(float64))
 			// fmt.Printf("Move %s %s %s\n")
-			if (start != position) {
+			if start != position {
 				mpdClient.Conn.Move(start, end, position)
 			}
 
 		// case "play":
-    //   // play current
+		//   // play current
 		// 	mpdClient.Conn.PlayID(-1)
 
 		case "playid":
@@ -408,7 +473,6 @@ func (c *Client) readSocketEvents() {
 	}
 }
 
-
 func (c *Client) writeSocketEvents() {
 
 	defer func() {
@@ -449,18 +513,18 @@ func (c *Client) writeSocketEvents() {
 				c.sendStatusMessage()
 
 			case "playlist":
-				c.sendPlaylistMessage()
+				// c.sendPlaylistMessage()
+				c.sendPlaylistChanges()
 
 			case "update":
 				c.sendUpdateDatabaseMessage()
 			}
 
-		case <- time.After(1000 * time.Millisecond):
+		case <-time.After(1000 * time.Millisecond):
 			c.sendSeekMessage()
 		}
 	}
 }
-
 
 //
 // web socket feeder
@@ -482,7 +546,7 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := &Client{
-		hub: hub,
+		hub:  hub,
 		conn: ws,
 		send: make(chan []byte, 256),
 	}
@@ -491,7 +555,6 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	go client.writeSocketEvents()
 	go client.readSocketEvents()
 }
-
 
 //
 // handle funcs
@@ -502,7 +565,6 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response{"ok"})
 }
-
 
 func search(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)

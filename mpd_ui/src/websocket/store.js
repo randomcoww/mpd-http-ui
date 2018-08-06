@@ -44,9 +44,32 @@ const websocket = {
       state.socket.reconnectError = true
     },
 
-    playlist (state, message) {
-      state.socket.version = message.value[0]
-      state.socket.playlist.splice(message.value[1])
+    // playlist (state, message) {
+    //   state.socket.version = message.value[0]
+    //   state.socket.playlist.splice(message.value[1])
+    // },
+
+    playlistadd (state, message) {
+      let startPos = message.value[0]
+      let addLength = message.value[1]
+      let insertArray = new Array(addLength)
+
+      state.socket.playlist.splice(startPos, 0, insertArray)
+    },
+
+    playlistdelete (state, message) {
+      let startPos = message.value[0]
+      let deleteLength = message.value[1]
+
+      state.socket.playlist.splice(startPos, deleteLength)
+    },
+
+    playlistmove (state, message) {
+      let startPos = message.value[0]
+      let deleteLength = message.value[1]
+      let insertArray = new Array(deleteLength)
+
+      state.socket.playlist.splice(startPos, deleteLength, insertArray)
     },
 
     status (state, message) {
