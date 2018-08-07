@@ -94,7 +94,7 @@ export default {
 
   mounted () {
     this.onResize()
-    this.$socket.sendObj({ mutation: 'playlistupdate', value: [0, this.buffer * 2] })
+    this.$socket.sendObj({ mutation: 'playlistquery', value: [0, this.buffer * 2] })
   },
 
   methods: {
@@ -124,7 +124,7 @@ export default {
     },
 
     onScrollBottom () {
-      this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.end, this.end + this.buffer] })
+      this.$socket.sendObj({ mutation: 'playlistquery', value: [this.end, this.end + this.buffer] })
     },
 
     updatePlaylist () {
@@ -157,7 +157,7 @@ export default {
       }
 
       if (foundNullStart || foundNullEnd) {
-        this.$socket.sendObj({ mutation: 'playlistupdate', value: [updateStart, updateEnd + 1] })
+        this.$socket.sendObj({ mutation: 'playlistquery', value: [updateStart, updateEnd + 1] })
       }
     },
 

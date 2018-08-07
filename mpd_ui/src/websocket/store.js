@@ -98,7 +98,7 @@ const websocket = {
       state.socket.elapsed = message.value
     },
 
-    playlistupdate (state, message) {
+    playlistquery (state, message) {
       // state.socket.playlist = message.value
       message.value.map(v => {
         state.socket.playlist.splice(v.Pos, 1, v)

@@ -236,7 +236,7 @@ func createPlaylistQueryMessage(start, end int) (*socketMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &socketMessage{Data: attrs, Name: "playlistupdate"}, nil
+	return &socketMessage{Data: attrs, Name: "playlistquery"}, nil
 }
 
 func createSearchMessage(query string, start, size int) (*socketMessage, error) {
@@ -378,7 +378,7 @@ func (c *Client) readSocketEvents() {
 			mpdClient.Conn.SeekCur(time.Duration(t), false)
 
 			// client specific playlist query
-		case "playlistupdate":
+		case "playlistquery":
 			d := v.Data.([]interface{})
 			start := int(d[0].(float64))
 			end := int(d[1].(float64))
