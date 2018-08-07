@@ -65,6 +65,13 @@ export default {
   },
 
   computed: {
+    socketReady: _.debounce(function () {
+      if (this.$store.state.websocket.socket.isConnected) {
+        console.info('Socket connected playlistquery')
+        this.$socket.sendObj({ mutation: 'playlistquery', value: [this.start, this.end + this.buffer] })
+      }
+    }, 300),
+
     isActive: {
       get () {
         return this.$store.state.common.playlist.visible
@@ -89,12 +96,13 @@ export default {
         this.end = this.buffer
       }
       this.updatePlaylist()
+    },
+    socketReady: function () {
     }
   },
 
   mounted () {
     this.onResize()
-    this.$socket.sendObj({ mutation: 'playlistquery', value: [0, this.buffer * 2] })
   },
 
   methods: {

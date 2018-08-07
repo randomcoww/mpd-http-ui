@@ -39,12 +39,12 @@ v-navigation-drawer(
 <script>
 import VirtualList from 'vue-virtual-scroll-list'
 import _ from 'lodash'
-import draggable from 'vuedraggable'
+// import draggable from 'vuedraggable'
 
 export default {
   components: {
-    VirtualList,
-    draggable
+    // draggable,
+    VirtualList
   },
 
   data () {
