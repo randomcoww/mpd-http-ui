@@ -21,22 +21,22 @@ v-navigation-drawer(
       :onscroll="onScroll"
       :tobottom="onScrollBottom"
     )
-      div(v-for="(playlistitem, index) in playlistitems" :index="index" :key="playlistitem.Id")
-        draggable(v-model="playlistitems" @end="onMoved" :options="{group: 'playlistitems', handle: '.handle'}" :id="index")
+      div(v-for="(playlistItem, index) in playlistItems" :index="index" :key="playlistItem.Id")
+        draggable(v-model="playlistItems" @end="onMoved" :options="{group: 'playlistItems', handle: '.handle'}" :id="index")
           v-list-tile(@click="")
             template(v-if="$vuetify.breakpoint.smAndUp")
               v-list-tile-action.handle
                 v-icon(color="primary") drag_handle
             v-list-tile-action
-              v-btn(flat icon color="primary" @click="playId(playlistitem.Id)")
+              v-btn(flat icon color="primary" @click="playId(playlistItem.Id)")
                 v-icon play_arrow
             v-list-tile-title
-              | {{ playlistitem.Artist || 'No Artist' }}
+              | {{ playlistItem.Artist || '...' }}
             v-list-tile-title
-              | {{ playlistitem.Title || 'No Title' }}
+              | {{ playlistItem.Title || '...' }}
             template(v-if="$vuetify.breakpoint.smAndUp")
               v-list-tile-action
-                v-btn(flat icon color="primary" @click="removeId(playlistitem.Id)")
+                v-btn(flat icon color="primary" @click="removeId(playlistItem.Id)")
                   v-icon delete
 </template>
 
@@ -60,8 +60,6 @@ export default {
       // preload item count
       buffer: 10,
       // save loaded state to refresh items
-      bufferedStart: 0,
-      bufferedEnd: 0,
       drag: false
     }
   },
@@ -76,7 +74,7 @@ export default {
       }
     },
 
-    playlistitems: {
+    playlistItems: {
       get: function () {
         return this.$store.state.websocket.socket.playlist
       },
@@ -86,7 +84,7 @@ export default {
   },
 
   watch: {
-    playlistitems: function () {
+    playlistItems: function () {
       if (this.end <= 0) {
         this.end = this.buffer
       }
@@ -126,8 +124,7 @@ export default {
     },
 
     onScrollBottom () {
-      let end = this.end + this.buffer
-      this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.end, end] })
+      this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.end, this.end + this.buffer] })
     },
 
     updatePlaylist () {
@@ -148,20 +145,19 @@ export default {
         }
       }
 
-      // for (i = this.end; i >= this.start; i--) {
-      //   if (
-      //     typeof (this.$store.state.websocket.socket.playlist[i]) === 'undefined' ||
-      //     !('Id' in this.$store.state.websocket.socket.playlist[i])
-      //   ) {
-      //     foundNullEnd = true
-      //     updateEnd = i
-      //     break
-      //   }
-      // }
+      for (i = this.end; i >= this.start; i--) {
+        if (
+          typeof (this.$store.state.websocket.socket.playlist[i]) === 'undefined' ||
+          !('Id' in this.$store.state.websocket.socket.playlist[i])
+        ) {
+          foundNullEnd = true
+          updateEnd = i
+          break
+        }
+      }
 
       if (foundNullStart || foundNullEnd) {
-        console.info('Playlist update', updateStart, updateEnd)
-        this.$socket.sendObj({ mutation: 'playlistupdate', value: [updateStart, updateEnd] })
+        this.$socket.sendObj({ mutation: 'playlistupdate', value: [updateStart, updateEnd + 1] })
       }
     },
 

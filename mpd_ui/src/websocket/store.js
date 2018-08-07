@@ -8,7 +8,6 @@ const defaults = {
     currentSong: {},
     elapsed: null,
     duration: null,
-    version: null,
     databaseUpdateIndex: 0
   }
 }
@@ -44,32 +43,26 @@ const websocket = {
       state.socket.reconnectError = true
     },
 
-    // playlist (state, message) {
-    //   state.socket.version = message.value[0]
-    //   state.socket.playlist.splice(message.value[1])
-    // },
-
     playlistadd (state, message) {
       let startPos = message.value[0]
       let addLength = message.value[1]
-      let insertArray = new Array(addLength)
-
-      state.socket.playlist.splice(startPos, 0, insertArray)
+      for (var i = 0; i < addLength; i++) {
+        state.socket.playlist.splice(startPos + i, 1, {})
+      }
     },
 
     playlistdelete (state, message) {
       let startPos = message.value[0]
       let deleteLength = message.value[1]
-
       state.socket.playlist.splice(startPos, deleteLength)
     },
 
     playlistmove (state, message) {
       let startPos = message.value[0]
       let deleteLength = message.value[1]
-      let insertArray = new Array(deleteLength)
-
-      state.socket.playlist.splice(startPos, deleteLength, insertArray)
+      for (var i = 0; i < deleteLength; i++) {
+        state.socket.playlist.splice(startPos + i, 1, {})
+      }
     },
 
     status (state, message) {
