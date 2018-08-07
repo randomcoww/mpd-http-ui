@@ -63,10 +63,16 @@ export default {
   },
 
   computed: {
+    socketReady: _.debounce(function () {
+      if (this.$store.state.websocket.socket.isConnected) {
+        console.info('Socket connected currentsong')
+        this.$socket.sendObj({ mutation: 'currentsong' })
+      }
+    }, 300),
+    //
     mpdUrl () {
       return process.env.NODE_ENV === 'development' ? 'http://localhost:8000/mpd' : '/mpd'
     },
-
     currentSong () {
       return this.$store.state.websocket.socket.currentSong
     },
@@ -91,11 +97,12 @@ export default {
     },
     databaseUpdateIndex: function () {
       this.showSnackMessage('Received database update')
+    },
+    socketReady: function () {
     }
   },
 
   mounted () {
-    this.$socket.sendObj({ mutation: 'currentsong' })
   },
 
   methods: {
