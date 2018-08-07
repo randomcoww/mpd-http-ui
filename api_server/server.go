@@ -279,6 +279,12 @@ func (h *Hub) eventBroadcaster() {
 				}
 				h.broadcast <- msg
 
+				msg, err = createSeekMessage()
+				if err != nil {
+					break
+				}
+				h.broadcast <- msg
+
 			case "playlist":
 				msg, err := createPlaylistChangedMessage()
 				if err != nil {
