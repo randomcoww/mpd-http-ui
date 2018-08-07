@@ -25,25 +25,26 @@ v-navigation-drawer(
       :tobottom="onScrollBottom"
     )
       div(v-for="(searchresult, index) in searchresults" :index="index" :key="searchresult.file")
-        v-list-tile(@click="")
-          v-list-tile-action
-            v-btn(flat icon color="primary" @click="addPathToPlaylist(searchresult.file, -1)")
-              v-icon add
-          v-list-tile-title
-            | {{ searchresult.artist || 'No Artist' }}
-          v-list-tile-title
-            | {{ searchresult.title || 'No Title' }}
+        draggable(v-model="searchresults" @end="onMoved" :options="{group: 'playlistitems'}" :id="searchresult.file")
+          v-list-tile(@click="")
+            v-list-tile-action
+              v-btn(flat icon color="primary" @click="addPathToPlaylist(searchresult.file, -1)")
+                v-icon add
+            v-list-tile-title
+              | {{ searchresult.artist || 'No Artist' }}
+            v-list-tile-title
+              | {{ searchresult.title || 'No Title' }}
 </template>
 
 <script>
 import VirtualList from 'vue-virtual-scroll-list'
 import _ from 'lodash'
-// import draggable from 'vuedraggable'
+import draggable from 'vuedraggable'
 
 export default {
   components: {
-    VirtualList
-    // draggable
+    VirtualList,
+    draggable
   },
 
   data () {
@@ -141,6 +142,10 @@ export default {
         this.sendSearch(this.requestStart, this.requestCount)
         this.requestStart += this.requestCount
       }
+    },
+
+    onMoved (event) {
+      this.addPathToPlaylist(event.from.id, event.to.id)
     },
 
     onScroll (event, data) {

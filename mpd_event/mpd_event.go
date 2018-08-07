@@ -5,28 +5,29 @@ package mpd_event
 import (
 	"fmt"
 	"time"
+
 	mpd "github.com/fhs/gompd/mpd"
 )
 
 type MpdEvent struct {
-	up chan struct {}
-	down chan struct{}
-	conn *mpd.Client
+	up    chan struct{}
+	down  chan struct{}
+	conn  *mpd.Client
 	proto string
-	addr string
+	addr  string
 
 	// Ready chan struct{}
 	Event chan string
 }
 
 // create new MPD client
-func NewEventWatcher(proto, addr string) (*MpdEvent) {
+func NewEventWatcher(proto, addr string) *MpdEvent {
 	c := &MpdEvent{
-		up: make(chan struct{}, 1),
+		up:   make(chan struct{}, 1),
 		down: make(chan struct{}, 1),
 
 		proto: proto,
-		addr: addr,
+		addr:  addr,
 
 		// for external use
 		Event: make(chan string),
@@ -37,7 +38,6 @@ func NewEventWatcher(proto, addr string) (*MpdEvent) {
 
 	return c
 }
-
 
 func (c *MpdEvent) setState(ch chan struct{}) {
 	select {
@@ -56,8 +56,7 @@ func (c *MpdEvent) drainState(ch chan struct{}) {
 	}
 }
 
-
-func (c *MpdEvent) connect() (error) {
+func (c *MpdEvent) connect() error {
 	fmt.Printf("Connecting to MPD...\n")
 	conn, err := mpd.Dial(c.proto, c.addr)
 
@@ -71,7 +70,6 @@ func (c *MpdEvent) connect() (error) {
 
 	return nil
 }
-
 
 func (c *MpdEvent) reconnectLoop() {
 	for {

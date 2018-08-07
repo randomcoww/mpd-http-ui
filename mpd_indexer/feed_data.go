@@ -7,8 +7,9 @@ package main
 import (
 	"fmt"
 	"time"
-	mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
+
 	es_handler "github.com/randomcoww/go-mpd-es/es_handler"
+	mpd_handler "github.com/randomcoww/go-mpd-es/mpd_handler"
 )
 
 // elasticsearch stuff
@@ -69,9 +70,8 @@ var (
 	esIndex, esDocument = "songs", "song"
 )
 
-
 // main
-func NewDataFeeder(logFile, mpdUrl, esUrl string) (error) {
+func NewDataFeeder(logFile, mpdUrl, esUrl string) error {
 	logParser, err := NewLogEventParser(logFile)
 
 	if err != nil {
@@ -86,28 +86,28 @@ func NewDataFeeder(logFile, mpdUrl, esUrl string) (error) {
 
 	for {
 		select {
-		case c := <- logParser.added:
+		case c := <-logParser.added:
 			fmt.Printf("Add item event: %s\n", c)
 
 			attr := mpdClient.GetDatabaseItem(c)
 			addIndex := Song{
-				File: c,
-				Date: attr["date"],
+				File:     c,
+				Date:     attr["date"],
 				Duration: attr["duration"],
 				Composer: attr["composer"],
-				Album: attr["album"],
-				Track: attr["track"],
-				Title: attr["title"],
-				Artist: attr["artist"],
-				Genre: attr["genre"],
+				Album:    attr["album"],
+				Track:    attr["track"],
+				Title:    attr["title"],
+				Artist:   attr["artist"],
+				Genre:    attr["genre"],
 			}
 			esClient.IndexBulk(c, addIndex)
 
-		case c := <- logParser.deleted:
+		case c := <-logParser.deleted:
 			fmt.Printf("Delete item event: %s\n", c)
 			esClient.DeleteBluk(c)
 
-		case <- time.After(1000 * time.Millisecond):
+		case <-time.After(1000 * time.Millisecond):
 		}
 	}
 

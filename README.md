@@ -23,6 +23,13 @@ ES data remains on the container and won't be rebuilt each run. Remove container
     cd mpd_ui
     npm install
     npm run dev
+    
+using Docker
+
+    docker run -it --rm --net host -p 8080:8080 -v `pwd`/mpd_ui:/src --entrypoint=/bin/sh node:alpine
+    cd /src
+    npm install
+    npm run dev
 
 #### Environment test
 

@@ -5,23 +5,23 @@
 package main
 
 import (
-	"fmt"
-	"time"
-	"syscall"
 	"bufio"
+	"fmt"
 	"os"
 	"strings"
+	"syscall"
+	"time"
 )
 
 type LogEvents struct {
-	MpdReady 	chan bool
-	EsReady		chan bool
-	added   	chan string
-	deleted 	chan string
+	MpdReady chan bool
+	EsReady  chan bool
+	added    chan string
+	deleted  chan string
 }
 
 var (
-	addedString = "update: added "
+	addedString   = "update: added "
 	deletedString = "update: removing "
 )
 
@@ -38,7 +38,7 @@ func NewLogEventParser(logFile string) (*LogEvents, error) {
 	reader := bufio.NewReader(f)
 
 	e := &LogEvents{
-		added: make(chan string),
+		added:   make(chan string),
 		deleted: make(chan string),
 	}
 

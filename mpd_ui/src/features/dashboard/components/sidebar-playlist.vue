@@ -21,22 +21,22 @@ v-navigation-drawer(
       :onscroll="onScroll"
       :tobottom="onScrollBottom"
     )
-      div(v-for="(playlistitem, index) in playlistitems" :index="index" :key="playlistitem.Pos")
-        draggable(v-model="playlistitems" @end="onMoved" :options="{group: 'playlistitems', handle: '.handle'}" :id="index")
+      div(v-for="(playlistItem, index) in playlistItems" :index="index" :key="playlistItem.Id")
+        draggable(v-model="playlistItems" @end="onMoved" :options="{group: 'playlistItems', handle: '.handle'}" :id="index")
           v-list-tile(@click="")
             template(v-if="$vuetify.breakpoint.smAndUp")
               v-list-tile-action.handle
                 v-icon(color="primary") drag_handle
             v-list-tile-action
-              v-btn(flat icon color="primary" @click="playId(playlistitem.Id)")
+              v-btn(flat icon color="primary" @click="playId(playlistItem.Id)")
                 v-icon play_arrow
             v-list-tile-title
-              | {{ playlistitem.Artist || 'No Artist' }}
+              | {{ playlistItem.Artist || '...' }}
             v-list-tile-title
-              | {{ playlistitem.Title || 'No Title' }}
+              | {{ playlistItem.Title || '...' }}
             template(v-if="$vuetify.breakpoint.smAndUp")
               v-list-tile-action
-                v-btn(flat icon color="primary" @click="removeId(playlistitem.Id)")
+                v-btn(flat icon color="primary" @click="removeId(playlistItem.Id)")
                   v-icon delete
 </template>
 
@@ -60,8 +60,6 @@ export default {
       // preload item count
       buffer: 10,
       // save loaded state to refresh items
-      bufferedStart: 0,
-      bufferedEnd: 0,
       drag: false
     }
   },
@@ -76,31 +74,27 @@ export default {
       }
     },
 
-    playlistitems: {
+    playlistItems: {
       get: function () {
         return this.$store.state.websocket.socket.playlist
       },
       set: function () {
       }
-    },
-    playlistVersion () {
-      return this.$store.state.websocket.socket.version
     }
   },
 
   watch: {
-    playlistVersion: function () {
+    playlistItems: function () {
       if (this.end <= 0) {
         this.end = this.buffer
       }
-      // console.info('playlistversion', this.start, this.end)
-      this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.start, this.end] })
+      this.updatePlaylist()
     }
   },
 
   mounted () {
     this.onResize()
-    this.$socket.sendObj({ mutation: 'playlistupdate', value: [0, this.buffer * 2] })
+    this.$socket.sendObj({ mutation: 'playlistquery', value: [0, this.buffer * 2] })
   },
 
   methods: {
@@ -130,8 +124,41 @@ export default {
     },
 
     onScrollBottom () {
-      let end = this.end + this.buffer
-      this.$socket.sendObj({ mutation: 'playlistupdate', value: [this.end, end] })
+      this.$socket.sendObj({ mutation: 'playlistquery', value: [this.end, this.end + this.buffer] })
+    },
+
+    updatePlaylist () {
+      let i
+      let foundNullStart = false
+      let foundNullEnd = false
+      let updateStart = this.start
+      let updateEnd = this.end
+
+      for (i = this.start; i <= this.end; i++) {
+        if (
+          typeof (this.$store.state.websocket.socket.playlist[i]) === 'undefined' ||
+          !('Id' in this.$store.state.websocket.socket.playlist[i])
+        ) {
+          foundNullStart = true
+          updateStart = i
+          break
+        }
+      }
+
+      for (i = this.end; i >= this.start; i--) {
+        if (
+          typeof (this.$store.state.websocket.socket.playlist[i]) === 'undefined' ||
+          !('Id' in this.$store.state.websocket.socket.playlist[i])
+        ) {
+          foundNullEnd = true
+          updateEnd = i
+          break
+        }
+      }
+
+      if (foundNullStart || foundNullEnd) {
+        this.$socket.sendObj({ mutation: 'playlistquery', value: [updateStart, updateEnd + 1] })
+      }
     },
 
     // playlist may have updated - refresh view as they become visible
@@ -139,42 +166,7 @@ export default {
       this.start = data['start']
       this.end = data['end']
 
-      // scroll down refresh
-      if (this.end > this.bufferedEnd) {
-        let start = this.bufferedEnd
-        if (start < this.start) {
-          start = this.start
-        }
-
-        let end = this.end + this.buffer
-
-        // console.info('down_request', start, end)
-        this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, end] })
-
-        this.bufferedStart = this.start
-        this.bufferedEnd = end
-        return
-      }
-
-      // scroll up refresh
-      if (this.start < this.bufferedStart) {
-        // buffer start to avoid making many requests
-        let start = this.start - this.buffer
-        if (start < 0) {
-          start = 0
-        }
-
-        let end = this.bufferedStart
-        if (end > this.end) {
-          end = this.end
-        }
-
-        // console.info('up_request', start, end)
-        this.$socket.sendObj({ mutation: 'playlistupdate', value: [start, end] })
-
-        this.bufferedStart = start
-        this.bufferedEnd = this.end
-      }
+      this.updatePlaylist()
     }, 300)
   }
 }
