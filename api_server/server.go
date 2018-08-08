@@ -248,6 +248,10 @@ func createPlaylistQueryMessage(start, end int) (*socketMessage, error) {
 	return &socketMessage{Data: attrs, Name: "playlistquery"}, nil
 }
 
+func createPlaylistLengthMessage() *socketMessage {
+	return &socketMessage{Data: playlistLength, Name: "playlistlengthquery"}
+}
+
 func createSearchMessage(query string, start, size int) (*socketMessage, error) {
 	search, err := esClient.Search(query, start, size)
 	if err != nil {
@@ -403,6 +407,11 @@ func (c *Client) readSocketEvents() {
 			if err != nil {
 				break
 			}
+			c.conn.WriteJSON(*msg)
+
+			// client specific query for current playlist length
+		case "playlistlengthquery":
+			msg := createPlaylistLengthMessage()
 			c.conn.WriteJSON(*msg)
 
 			// client specific current song query

@@ -19,7 +19,6 @@ v-navigation-drawer(
       :size="this.size"
       :remain="this.buffer"
       :onscroll="onScroll"
-      :tobottom="onScrollBottom"
     )
       div(v-for="(playlistItem, index) in playlistItems" :index="index" :key="playlistItem.Id")
         draggable(v-model="playlistItems" @end="onMoved" :options="{group: 'playlistItems', handle: '.handle'}" :id="index")
@@ -58,7 +57,7 @@ export default {
       start: 0,
       end: 0,
       // preload item count
-      buffer: 10,
+      buffer: 0,
       // save loaded state to refresh items
       drag: false
     }
@@ -67,8 +66,7 @@ export default {
   computed: {
     socketReady: _.debounce(function () {
       if (this.$store.state.websocket.socket.isConnected) {
-        console.info('Socket connected playlistquery')
-        this.$socket.sendObj({ mutation: 'playlistquery', value: [this.start, this.end + this.buffer] })
+        this.$socket.sendObj({ mutation: 'playlistlengthquery' })
       }
     }, 300),
 
@@ -131,40 +129,34 @@ export default {
       this.$socket.sendObj({ mutation: 'playlistmove', value: [from, from + 1, to] })
     },
 
-    onScrollBottom () {
-      this.$socket.sendObj({ mutation: 'playlistquery', value: [this.end, this.end + this.buffer] })
-    },
-
     updatePlaylist () {
       let i
-      let foundNullStart = false
-      let foundNullEnd = false
+      let foundNull = false
       let updateStart = this.start
       let updateEnd = this.end
 
       for (i = this.start; i <= this.end; i++) {
         if (
           typeof (this.$store.state.websocket.socket.playlist[i]) === 'undefined' ||
-          !('Id' in this.$store.state.websocket.socket.playlist[i])
+          !('Pos' in this.$store.state.websocket.socket.playlist[i])
         ) {
-          foundNullStart = true
+          foundNull = true
           updateStart = i
           break
         }
       }
 
-      for (i = this.end; i >= this.start; i--) {
-        if (
-          typeof (this.$store.state.websocket.socket.playlist[i]) === 'undefined' ||
-          !('Id' in this.$store.state.websocket.socket.playlist[i])
-        ) {
-          foundNullEnd = true
-          updateEnd = i
-          break
+      if (foundNull) {
+        for (i = this.end; i >= updateStart; i--) {
+          if (
+            typeof (this.$store.state.websocket.socket.playlist[i]) === 'undefined' ||
+            !('Pos' in this.$store.state.websocket.socket.playlist[i])
+          ) {
+            updateEnd = i
+            break
+          }
         }
-      }
 
-      if (foundNullStart || foundNullEnd) {
         this.$socket.sendObj({ mutation: 'playlistquery', value: [updateStart, updateEnd + 1] })
       }
     },
@@ -175,7 +167,7 @@ export default {
       this.end = data['end']
 
       this.updatePlaylist()
-    }, 300)
+    }, 100)
   }
 }
 </script>

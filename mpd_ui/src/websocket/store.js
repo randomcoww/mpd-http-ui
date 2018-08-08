@@ -1,4 +1,5 @@
 const defaults = {
+  playlistTempIndex: 0,
   socket: {
     isConnected: false,
     reconnectError: false,
@@ -8,7 +9,8 @@ const defaults = {
     currentSong: {},
     elapsed: null,
     duration: null,
-    databaseUpdateIndex: 0
+    databaseUpdateIndex: 0,
+    playlistlength: 0
   }
 }
 
@@ -47,7 +49,7 @@ const websocket = {
       let startPos = message.value[0]
       let addLength = message.value[1]
       for (var i = 0; i < addLength; i++) {
-        state.socket.playlist.splice(startPos + i, 1, {})
+        state.socket.playlist.splice(startPos + i, 1, {Id: 'placeholder' + state.playlistTempIndex++})
       }
     },
 
@@ -61,7 +63,7 @@ const websocket = {
       let startPos = message.value[0]
       let deleteLength = message.value[1]
       for (var i = 0; i < deleteLength; i++) {
-        state.socket.playlist.splice(startPos + i, 1, {})
+        state.socket.playlist.splice(startPos + i, 1, {Id: 'placeholder' + state.playlistTempIndex++})
       }
     },
 
@@ -103,6 +105,20 @@ const websocket = {
       message.value.map(v => {
         state.socket.playlist.splice(v.Pos, 1, v)
       })
+    },
+
+    // initialize playlist and fix playlist length
+    playlistlengthquery (state, message) {
+      state.socket.playlistlength = message.value
+      // console.info('init playlist', state.socket.playlist.length, state.socket.playlistlength)
+
+      if (state.socket.playlist.length < state.socket.playlistlength) {
+        for (var i = state.socket.playlist.length; i < state.socket.playlistlength; i++) {
+          state.socket.playlist.splice(i, 0, {Id: 'placeholder' + state.playlistTempIndex++})
+        }
+      } else if (state.socket.playlist.length > state.socket.playlistlength) {
+        state.socket.playlist.splice(state.socket.playlist.length, state.socket.playlist.length - state.socket.playlistlength)
+      }
     },
 
     updatedb (state, message) {
