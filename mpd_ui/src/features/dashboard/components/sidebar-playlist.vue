@@ -59,10 +59,7 @@ export default {
       // preload item count
       buffer: 0,
       // save loaded state to refresh items
-      drag: false,
-      //
-      loadStart: 0,
-      loadEnd: 0
+      drag: false
     }
   },
 
@@ -110,6 +107,9 @@ export default {
 
     onResize () {
       this.buffer = Math.floor((window.innerHeight - this.size - 10) / this.size)
+      if (this.end <= this.start) {
+        this.end = this.start + this.buffer
+      }
     },
 
     playId (id) {
@@ -129,7 +129,7 @@ export default {
       this.$socket.sendObj({ mutation: 'playlistmove', value: [from, from + 1, to] })
     },
 
-    updatePlaylist () {
+    updatePlaylist: _.debounce(function () {
       let i
       let foundNull = false
       let updateStart = this.start
@@ -159,18 +159,15 @@ export default {
 
         this.$socket.sendObj({ mutation: 'playlistquery', value: [updateStart, updateEnd + 1] })
       }
-    },
+    }, 100),
 
     // playlist may have updated - refresh view as they become visible
-    onScroll: _.debounce(function (event, data) {
+    onScroll (event, data) {
       this.start = data['start']
       this.end = data['end']
 
-      // this.loadStart = Math.max(0, this.start - this.buffer)
-      // this.loadEnd = Math.min(this.end + this.buffer, this.$store.state.websocket.socket.playlist.length - 1)
-
       this.updatePlaylist()
-    }, 100)
+    }
   }
 }
 </script>

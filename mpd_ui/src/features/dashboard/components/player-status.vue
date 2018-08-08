@@ -3,7 +3,6 @@
 
     audio(
       :src="mpdUrl"
-      autoplay="autoplay"
       ref="mpdplayer"
       preload="none"
       @canplay="onMpdEvent"
@@ -65,7 +64,7 @@ export default {
   computed: {
     socketReady: _.debounce(function () {
       if (this.$store.state.websocket.socket.isConnected) {
-        console.info('Socket connected currentsong')
+        // console.info('Socket connected currentsong')
         this.$socket.sendObj({ mutation: 'currentsong' })
       }
     }, 300),

@@ -13,7 +13,7 @@ v-navigation-drawer(
     v-icon(color="grey") storage
     v-spacer
     v-flex(xs8)
-      v-text-field(append-icon="search" v-model="searchText" hide-details single-line v-model.lazy="databasequery")
+      v-text-field(append-icon="search" v-model="searchText" hide-details single-line v-model.lazy="databaseQuery")
     v-btn(icon ripple @click="toggleLibrary")
       v-icon close
 
@@ -24,16 +24,15 @@ v-navigation-drawer(
       :onscroll="onScroll"
       :tobottom="onScrollBottom"
     )
-      div(v-for="(searchresult, index) in searchresults" :index="index" :key="searchresult.file")
-        draggable(v-model="searchresults" @end="onMoved" :options="{group: 'playlistitems'}" :id="searchresult.file")
-          v-list-tile(@click="")
-            v-list-tile-action
-              v-btn(flat icon color="primary" @click="addPathToPlaylist(searchresult.file, -1)")
-                v-icon add
-            v-list-tile-title
-              | {{ searchresult.artist || 'No Artist' }}
-            v-list-tile-title
-              | {{ searchresult.title || 'No Title' }}
+      div(v-for="(searchResult, index) in searchResults" :index="index" :key="searchResult.file")
+        v-list-tile(@click="")
+          v-list-tile-action
+            v-btn(flat icon color="primary" @click="addPathToPlaylist(searchResult.file, -1)")
+              v-icon add
+          v-list-tile-title
+            | {{ searchResult.artist || 'No Artist' }}
+          v-list-tile-title
+            | {{ searchResult.title || 'No Title' }}
 </template>
 
 <script>
@@ -58,7 +57,7 @@ export default {
       requestStart: 0,
       requestCount: 40,
       // search query
-      databasequery: null
+      databaseQuery: null
     }
   },
 
@@ -72,22 +71,17 @@ export default {
       }
     },
 
-    searchresults: {
+    searchResults: {
       get: function () {
         return this.$store.state.websocket.socket.search
       },
       set: function () {
       }
-    },
-    style () {
-      return {
-        // 'height': this.size + 'px'
-      }
     }
   },
 
   watch: {
-    databasequery: _.debounce(function () {
+    databaseQuery: _.debounce(function () {
       let requestCount = this.buffer * 2
 
       this.requestStart = 0
@@ -111,7 +105,7 @@ export default {
 
     sendSearch (start, count) {
       // console.info('search', start, count)
-      this.$socket.sendObj({ mutation: 'search', value: [this.databasequery, start, count] })
+      this.$socket.sendObj({ mutation: 'search', value: [this.databaseQuery, start, count] })
     },
 
     showSnackMessage (msg) {
@@ -121,7 +115,7 @@ export default {
     addPathToPlaylist (path, position) {
       position = parseInt(position)
       if (Number.isInteger(position)) {
-        console.info('AddToPlaylist', path, position)
+        // console.info('AddToPlaylist', path, position)
         this.$socket.sendObj({ mutation: 'addpath', value: [path, position] })
         // show added message
         this.showSnackMessage('Added ' + path)
