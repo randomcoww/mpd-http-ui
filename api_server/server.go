@@ -154,18 +154,17 @@ func createUpdateDatabaseMessage() *socketMessage {
 }
 
 func createPlaylistChangedMessage() (*socketMessage, error) {
-	curPlaylistLength := playlistLength
-	curPlaylistVersion := playlistVersion
+	prevPlaylistVersion := playlistVersion
+	prevPlaylistLength := playlistLength
 
-	// set new playlistVersion and playlistLength
 	updatePlaylistStatus()
 
-	fmt.Printf("MPD playlist update length: %v -> %v\n", curPlaylistLength, playlistLength)
-	fmt.Printf("MPD playlist update version: %v -> %v\n", curPlaylistVersion, playlistVersion)
+	fmt.Printf("MPD playlist update length: %v -> %v\n", prevPlaylistLength, playlistLength)
+	fmt.Printf("MPD playlist update version: %v -> %v\n", prevPlaylistVersion, playlistVersion)
 
-	message := make([]int, 2)
+	// message := make([]int, 2)
 
-	if playlistLength > curPlaylistLength {
+	if playlistLength > prevPlaylistLength {
 		// Behavior for add to playlist
 		// 0. song1
 		// 1. song2 <-- added
@@ -173,8 +172,8 @@ func createPlaylistChangedMessage() (*socketMessage, error) {
 		// 3. song4
 		// 4. song5
 		// Receives: start: 0, end: 3 (new length of playlist)
-		addCount := playlistLength - curPlaylistLength
-		changeStartPos, _, err := getPlaylistChangePos(curPlaylistVersion)
+		addCount := playlistLength - prevPlaylistLength
+		changeStartPos, _, err := getPlaylistChangePos(prevPlaylistVersion)
 
 		if err != nil {
 			return nil, err
@@ -183,12 +182,13 @@ func createPlaylistChangedMessage() (*socketMessage, error) {
 		// changeStartPos, changeStartPos + addCount
 		fmt.Printf("MPD playlist add positions at: %v count: %v\n", changeStartPos, addCount)
 
+		message := make([]int, 2)
 		message[0] = changeStartPos
 		message[1] = addCount
 
 		return &socketMessage{Data: message, Name: "playlistadd"}, nil
 
-	} else if playlistLength < curPlaylistLength {
+	} else if playlistLength < prevPlaylistLength {
 		// Behavior for removed from playlist
 		// 0. song1
 		// 1. song2 <-- deleting
@@ -196,17 +196,23 @@ func createPlaylistChangedMessage() (*socketMessage, error) {
 		// 3. song4
 		// 4. song5
 		// Receives: start: 1, end: 2 (new length of playlist)
-		removeCount := curPlaylistLength - playlistLength
-		changeStartPos, _, err := getPlaylistChangePos(curPlaylistVersion)
+		removeCount := prevPlaylistLength - playlistLength
+		changeStartPos, _, err := getPlaylistChangePos(prevPlaylistVersion)
 
 		if err != nil {
 			return nil, err
+		}
+
+		// if negative last items were removed
+		if changeStartPos < 0 {
+			changeStartPos = playlistLength
 		}
 
 		// send socket event
 		// changeStartPos, changeStartPos + removeCount
 		fmt.Printf("MPD playlist delete at: %v count: %v\n", changeStartPos, removeCount)
 
+		message := make([]int, 2)
 		message[0] = changeStartPos
 		message[1] = removeCount
 
@@ -214,7 +220,7 @@ func createPlaylistChangedMessage() (*socketMessage, error) {
 
 	} else {
 		// Fallback for generic playlist changes (move, shuffle, etc)
-		changeStartPos, changeEndPos, err := getPlaylistChangePos(curPlaylistVersion)
+		changeStartPos, changeEndPos, err := getPlaylistChangePos(prevPlaylistVersion)
 		changeCount := changeEndPos - changeStartPos + 1
 
 		if err != nil {
@@ -223,6 +229,7 @@ func createPlaylistChangedMessage() (*socketMessage, error) {
 
 		fmt.Printf("MPD playlist moved positions at: %v count: %v\n", changeStartPos, changeCount)
 
+		message := make([]int, 2)
 		message[0] = changeStartPos
 		message[1] = changeCount
 
@@ -311,7 +318,9 @@ func (h *Hub) eventBroadcaster() {
 			if err != nil {
 				break
 			}
-			h.broadcast <- msg
+			if msg != nil {
+				h.broadcast <- msg
+			}
 		}
 	}
 }
@@ -567,8 +576,8 @@ func updatePlaylistStatus() error {
 }
 
 // when playlist changes, get the start and end index of change
-func getPlaylistChangePos(playlistVersion int) (int, int, error) {
-	attrs, err := mpdClient.PlChangePosId(playlistVersion, -1, -1)
+func getPlaylistChangePos(version int) (int, int, error) {
+	attrs, err := mpdClient.PlChangePosId(version, -1, -1)
 
 	if err != nil {
 		return 0, 0, err
@@ -602,6 +611,5 @@ func getPlaylistChangePos(playlistVersion int) (int, int, error) {
 	}
 
 	// if no result, last N items were removed
-	// ignore endPos
-	return playlistLength, -1, nil
+	return -1, -1, nil
 }
