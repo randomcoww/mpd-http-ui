@@ -156,6 +156,7 @@ func createUpdateDatabaseMessage() *socketMessage {
 func createPlaylistChangedMessage() (*socketMessage, error) {
 	curPlaylistLength := playlistLength
 	curPlaylistVersion := playlistVersion
+
 	// set new playlistVersion and playlistLength
 	updatePlaylistStatus()
 
@@ -201,6 +202,7 @@ func createPlaylistChangedMessage() (*socketMessage, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		// send socket event
 		// changeStartPos, changeStartPos + removeCount
 		fmt.Printf("MPD playlist delete at: %v count: %v\n", changeStartPos, removeCount)
@@ -434,6 +436,7 @@ func (c *Client) readSocketEvents() {
 
 		case "removeid":
 			d := int(v.Data.(float64))
+			// fmt.Printf("remove %v\n", d)
 			mpdClient.Conn.DeleteID(d)
 
 		case "addpath":
@@ -576,23 +579,29 @@ func getPlaylistChangePos(playlistVersion int) (int, int, error) {
 		endPos   = 0
 	)
 
-	v, ok := attrs[0]["cpos"]
-	if ok {
-		i, err := strconv.Atoi(v)
-		if err != nil {
-			return 0, 0, err
+	if len(attrs) > 0 {
+		v, ok := attrs[0]["cpos"]
+		if ok {
+			i, err := strconv.Atoi(v)
+			if err != nil {
+				return 0, 0, err
+			}
+			startPos = i
 		}
-		startPos = i
+
+		v, ok = attrs[len(attrs)-1]["cpos"]
+		if ok {
+			i, err := strconv.Atoi(v)
+			if err != nil {
+				return 0, 0, err
+			}
+			endPos = i
+		}
+
+		return startPos, endPos, nil
 	}
 
-	v, ok = attrs[len(attrs)-1]["cpos"]
-	if ok {
-		i, err := strconv.Atoi(v)
-		if err != nil {
-			return 0, 0, err
-		}
-		endPos = i
-	}
-
-	return startPos, endPos, nil
+	// if no result, last N items were removed
+	// ignore endPos
+	return playlistLength, -1, nil
 }
