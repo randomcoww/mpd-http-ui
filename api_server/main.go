@@ -9,13 +9,13 @@ import (
 )
 
 var (
-	listenUrl = flag.String("listenurl", "localhost:3000", "Listen URL")
-	mpdUrl    = flag.String("mpdurl", "localhost:6600", "MPD URL")
-	esUrl     = flag.String("esurl", "http://localhost:9200", "Elasticsearch URL")
+	listenURL = flag.String("listenurl", "localhost:3000", "Listen URL")
+	mpdURL    = flag.String("mpdurl", "localhost:6600", "MPD URL")
+	esURL     = flag.String("esurl", "http://localhost:9200", "Elasticsearch URL")
 )
 
 func main() {
 	flag.Parse()
 
-	NewServer(*listenUrl, *mpdUrl, *esUrl)
+	newServer(*listenURL, *mpdURL, *esURL)
 }

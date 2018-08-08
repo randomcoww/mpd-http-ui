@@ -59,7 +59,10 @@ export default {
       // preload item count
       buffer: 0,
       // save loaded state to refresh items
-      drag: false
+      drag: false,
+      //
+      loadStart: 0,
+      loadEnd: 0
     }
   },
 
@@ -90,9 +93,6 @@ export default {
 
   watch: {
     playlistItems: function () {
-      if (this.end <= 0) {
-        this.end = this.buffer
-      }
       this.updatePlaylist()
     },
     socketReady: function () {
@@ -135,7 +135,7 @@ export default {
       let updateStart = this.start
       let updateEnd = this.end
 
-      for (i = this.start; i <= this.end; i++) {
+      for (i = updateStart; i <= updateEnd; i++) {
         if (
           typeof (this.$store.state.websocket.socket.playlist[i]) === 'undefined' ||
           !('Pos' in this.$store.state.websocket.socket.playlist[i])
@@ -147,7 +147,7 @@ export default {
       }
 
       if (foundNull) {
-        for (i = this.end; i >= updateStart; i--) {
+        for (i = updateEnd; i >= updateStart; i--) {
           if (
             typeof (this.$store.state.websocket.socket.playlist[i]) === 'undefined' ||
             !('Pos' in this.$store.state.websocket.socket.playlist[i])
@@ -165,6 +165,9 @@ export default {
     onScroll: _.debounce(function (event, data) {
       this.start = data['start']
       this.end = data['end']
+
+      // this.loadStart = Math.max(0, this.start - this.buffer)
+      // this.loadEnd = Math.min(this.end + this.buffer, this.$store.state.websocket.socket.playlist.length - 1)
 
       this.updatePlaylist()
     }, 100)

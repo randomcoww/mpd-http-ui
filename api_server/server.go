@@ -56,11 +56,11 @@ type socketMessage struct {
 	Data interface{} `json:"value"`
 }
 
-func NewServer(listenUrl, mpdUrl, esUrl string) {
+func newServer(listenURL, mpdURL, esURL string) {
 	// backend stuff
-	mpdClient = mpd_handler.NewMpdClient("tcp", mpdUrl)
-	esClient = es_handler.NewEsClient(esUrl, esIndex, esDocument, "")
-	mpdEvent = mpd_event.NewEventWatcher("tcp", mpdUrl)
+	mpdClient = mpd_handler.NewMpdClient("tcp", mpdURL)
+	esClient = es_handler.NewEsClient(esURL, esIndex, esDocument, "")
+	mpdEvent = mpd_event.NewEventWatcher("tcp", mpdURL)
 
 	// websocket hub
 	hub := newHub()
@@ -99,8 +99,8 @@ func NewServer(listenUrl, mpdUrl, esUrl string) {
 	mpdClient.Conn.Repeat(true)
 
 	// serve http
-	fmt.Printf("API server start on %s\n", listenUrl)
-	log.Fatal(http.ListenAndServe(listenUrl, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(r)))
+	fmt.Printf("API server start on %s\n", listenURL)
+	log.Fatal(http.ListenAndServe(listenURL, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(r)))
 }
 
 //
