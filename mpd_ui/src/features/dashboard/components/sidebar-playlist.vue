@@ -4,7 +4,7 @@ v-navigation-drawer(
   app
   fixed
   right
-  :width="800"
+  :width="1000"
   v-resize="onResize"
 )
 
@@ -19,24 +19,17 @@ v-navigation-drawer(
       :size="this.size"
       :remain="this.buffer"
       :onscroll="onScroll"
+      :debounce="50"
+      :bench="this.buffer"
     )
       div(v-for="(playlistItem, index) in playlistItems" :index="index" :key="playlistItem.Id")
-        draggable(v-model="playlistItems" @end="onMoved" :options="{group: 'playlistItems', handle: '.handle'}" :id="index")
-          v-list-tile(@click="")
-            template(v-if="$vuetify.breakpoint.smAndUp")
-              v-list-tile-action.handle
-                v-icon(color="primary") drag_handle
-            v-list-tile-action
-              v-btn(flat icon color="primary" @click="playId(playlistItem.Id)")
-                v-icon play_arrow
-            v-list-tile-title
-              | {{ playlistItem.Artist || '...' }}
-            v-list-tile-title
-              | {{ playlistItem.Title || '...' }}
-            template(v-if="$vuetify.breakpoint.smAndUp")
-              v-list-tile-action
-                v-btn(flat icon color="primary" @click="removeId(playlistItem.Id)")
-                  v-icon delete
+        v-list-tile(@click="")
+          v-list-tile-title
+            | {{ playlistItem.Artist || 'No Artist' }}
+          v-list-tile-title
+            | {{ playlistItem.Title || 'No Artist' }}
+          v-list-tile-title
+            | {{ playlistItem.Album || 'No Album' }}
 </template>
 
 <script>
@@ -129,7 +122,7 @@ export default {
       this.$socket.sendObj({ mutation: 'playlistmove', value: [from, from + 1, to] })
     },
 
-    updatePlaylist: _.debounce(function () {
+    updatePlaylist () {
       let i
       let foundNull = false
       let updateStart = this.start
@@ -137,7 +130,6 @@ export default {
 
       for (i = updateStart; i <= updateEnd; i++) {
         if (
-          typeof (this.$store.state.websocket.socket.playlist[i]) === 'undefined' ||
           !('Pos' in this.$store.state.websocket.socket.playlist[i])
         ) {
           foundNull = true
@@ -149,7 +141,6 @@ export default {
       if (foundNull) {
         for (i = updateEnd; i >= updateStart; i--) {
           if (
-            typeof (this.$store.state.websocket.socket.playlist[i]) === 'undefined' ||
             !('Pos' in this.$store.state.websocket.socket.playlist[i])
           ) {
             updateEnd = i
@@ -159,7 +150,7 @@ export default {
 
         this.$socket.sendObj({ mutation: 'playlistquery', value: [updateStart, updateEnd + 1] })
       }
-    }, 100),
+    },
 
     // playlist may have updated - refresh view as they become visible
     onScroll (event, data) {

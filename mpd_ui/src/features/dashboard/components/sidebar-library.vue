@@ -4,7 +4,7 @@ v-navigation-drawer(
   app
   fixed
   left
-  :width="800"
+  :width="1000"
   temporary=true
   v-resize="onResize"
 )
@@ -23,16 +23,17 @@ v-navigation-drawer(
       :remain="this.buffer"
       :onscroll="onScroll"
       :tobottom="onScrollBottom"
+      :debounce="50"
+      :bench="this.buffer"
     )
       div(v-for="(searchResult, index) in searchResults" :index="index" :key="searchResult.file")
         v-list-tile(@click="")
-          v-list-tile-action
-            v-btn(flat icon color="primary" @click="addPathToPlaylist(searchResult.file, -1)")
-              v-icon add
           v-list-tile-title
             | {{ searchResult.artist || 'No Artist' }}
           v-list-tile-title
             | {{ searchResult.title || 'No Title' }}
+          v-list-tile-title
+            | {{ searchResult.album || 'No Album' }}
 </template>
 
 <script>
