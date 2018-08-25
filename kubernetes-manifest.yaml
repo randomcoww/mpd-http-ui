@@ -71,12 +71,12 @@ spec:
     spec:
       containers:
       - name: mpd-ui
-        image: randomcoww/go-project-mpd-ui:20180802.02
+        image: randomcoww/go-project-mpd-ui:20180808.01
         ports:
         - containerPort: 8080
           protocol: TCP
       - name: api-server
-        image: randomcoww/go-project-api-server:20180802.02
+        image: randomcoww/go-project-api-server:20180808.01
         args:
         - "-listenurl"
         - "0.0.0.0:3000"
@@ -90,7 +90,7 @@ spec:
         - mountPath: "/usr/share/elasticsearch/data"
           name: mpd-data
       - name: mpd-indexer
-        image: randomcoww/go-project-mpd-indexer:20180802.02
+        image: randomcoww/go-project-mpd-indexer:20180808.01
         args:
         - "-logfile"
         - "/mpd/logs/log"
@@ -102,9 +102,11 @@ spec:
         - mountPath: "/mpd/logs"
           name: mpd-logs
       - name: mpd
-        image: randomcoww/go-project-mpd:20180802.02
+        image: randomcoww/go-project-mpd:20180808.01
         ports:
         - containerPort: 6600
+          protocol: TCP
+        - containerPort: 8000
           protocol: TCP
         volumeMounts:
         - mountPath: "/mpd/music"
@@ -134,6 +136,9 @@ spec:
   - name: http
     port: 8080
     targetPort: 8080
+  - name: stream
+    port: 8000
+    targetPort: 8000    
   - name: control
     port: 6600
     targetPort: 6600
