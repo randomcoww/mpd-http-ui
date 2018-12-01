@@ -1,4 +1,8 @@
-#### Backend setup
+## MPD web UI with Elasticsearch search backend
+
+WIP
+
+### Backend setup
 
     docker-compose up --build
 
@@ -18,7 +22,7 @@ ES data remains on the container and won't be rebuilt each run. Remove container
 
     docker-compose rm -f
 
-#### UI setup
+### UI setup
 
     cd mpd_ui
     npm install
@@ -31,7 +35,7 @@ using Docker
     npm install
     npm run dev
 
-#### Environment test
+### Environment test
 
 Connect to control using `ncmpcpp`:
 
