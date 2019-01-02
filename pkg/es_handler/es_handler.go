@@ -6,10 +6,10 @@ package es_handler
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	elastic "gopkg.in/olivere/elastic.v5"
 )
 
@@ -105,13 +105,12 @@ func (c *EsClient) processLoop() {
 		// ping and reconnect
 		case <-time.After(10000 * time.Millisecond):
 			_, _, err := c.conn.Ping(c.url).Do(ctx)
-
 			if err != nil {
-				fmt.Printf("ES ping down %s\n", err)
+				logrus.Infof("ES ping down %s", err)
 				c.setState(c.down)
 
 			} else {
-				// fmt.Printf("ES ping\n")
+				// logrus.Infof("ES ping")
 			}
 		}
 	}
@@ -132,27 +131,26 @@ func (c *EsClient) processBulk() {
 					// make sure index is accessible before trying bulk write
 					exists, err := c.conn.IndexExists(c.index).Do(ctx)
 					if err != nil {
-						fmt.Printf("ES index test - %s\n", err)
+						logrus.Errorf("ES index test - %s", err)
 						continue
 					}
 
 					if !exists {
-						fmt.Printf("ES index test - not found\n")
+						logrus.Infof("ES index test - not found")
 						continue
 					}
 
-					fmt.Printf("ES index test - success\n")
+					logrus.Infof("ES index test - success")
 					break
 				}
 
 				c.drainState(c.bulkRequest)
 				_, err := c.bulk.Do(ctx)
-
 				if err != nil {
-					fmt.Printf("Error processsing ES bulk %s\n", err)
+					logrus.Errorf("Error processsing ES bulk %s", err)
 
 				} else {
-					fmt.Printf("Processsed ES bulk\n")
+					logrus.Infof("Processsed ES bulk")
 				}
 			}
 		}
@@ -161,14 +159,13 @@ func (c *EsClient) processBulk() {
 
 // get connection
 func (c *EsClient) connect() error {
-	fmt.Printf("Connecting to ES...\n")
+	logrus.Infof("Connecting to ES...")
 	conn, err := elastic.NewSimpleClient(elastic.SetURL(c.url))
-
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Connected to ES\n")
+	logrus.Infof("Connected to ES")
 	// defer conn.Close()
 	c.conn = conn
 	c.bulk = conn.Bulk()
@@ -184,12 +181,12 @@ func (c *EsClient) getOrCreateIndex() error {
 	}
 
 	if exists {
-		fmt.Printf("ES index exists\n")
+		logrus.Infof("ES index exists")
 		return nil
 	}
 
 	if len(c.mapping) == 0 {
-		return errors.New("ES mapping not provided")
+		return fmt.Errorf("ES mapping not provided")
 	}
 
 	_, err = c.conn.CreateIndex(c.index).BodyString(c.mapping).Do(ctx)
@@ -197,7 +194,7 @@ func (c *EsClient) getOrCreateIndex() error {
 		return err
 	}
 
-	fmt.Printf("Created ES index\n")
+	logrus.Infof("Created ES index")
 	return nil
 }
 

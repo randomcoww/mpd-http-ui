@@ -51,17 +51,16 @@ const websocket = {
       }
     },
 
-    playlistdelete (state, message) {
+    playlistchange (state, message) {
       let startPos = message.value[0]
       let deleteLength = message.value[1]
-      state.socket.playlist.splice(startPos, deleteLength)
-    },
-
-    playlistmove (state, message) {
-      let startPos = message.value[0]
-      let deleteLength = message.value[1]
+      let trimStartPos = message.value[2]
+      let trimLength = message.value[3]
       for (var i = 0; i < deleteLength; i++) {
         state.socket.playlist.splice(startPos + i, 1, {})
+      }
+      if (trimLength > 0) {
+        state.socket.playlist.splice(trimStartPos, trimLength)
       }
     },
 

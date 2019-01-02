@@ -1,0 +1,20 @@
+FROM golang:alpine as BUILD
+
+WORKDIR /go/src/github.com/randomcoww/go-mpd-es
+COPY cmd cmd
+COPY pkg pkg
+COPY mpd_indexer.go mpd_indexer.go
+
+RUN set -x \
+  \
+  && apk add --no-cache \
+    git \
+  \
+  && go get -d ./... \
+  && go build
+
+FROM alpine:edge
+
+COPY --from=BUILD /go/src/github.com/randomcoww/go-mpd-es/go-mpd-es /goapp
+
+ENTRYPOINT ["/goapp"]

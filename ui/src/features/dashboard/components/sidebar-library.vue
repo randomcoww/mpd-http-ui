@@ -4,7 +4,7 @@ v-navigation-drawer(
   app
   fixed
   left
-  :width="800"
+  :width="1000"
   temporary=true
   v-resize="onResize"
 )
@@ -23,6 +23,8 @@ v-navigation-drawer(
       :remain="this.buffer"
       :onscroll="onScroll"
       :tobottom="onScrollBottom"
+      :debounce="50"
+      :bench="this.buffer"
     )
       div(v-for="(searchresult, index) in searchresults" :index="index" :key="searchresult.file")
         draggable(v-model="searchresults" @end="onMoved" :options="{group: 'playlistitems'}" :id="searchresult.file")
@@ -34,6 +36,8 @@ v-navigation-drawer(
               | {{ searchresult.artist || 'No Artist' }}
             v-list-tile-title
               | {{ searchresult.title || 'No Title' }}
+            v-list-tile-title
+              | {{ searchresult.album || 'No Album' }}              
 </template>
 
 <script>

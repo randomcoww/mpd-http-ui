@@ -5,11 +5,11 @@
 package mpd_handler
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
 	mpd "github.com/fhs/gompd/mpd"
+	"github.com/sirupsen/logrus"
 )
 
 type MpdClient struct {
@@ -60,14 +60,13 @@ func (c *MpdClient) drainState(ch chan struct{}) {
 }
 
 func (c *MpdClient) connect() error {
-	fmt.Printf("Connecting to MPD...\n")
+	logrus.Infof("Connecting to MPD...")
 	conn, err := mpd.Dial(c.proto, c.addr)
-
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Connected to MPD\n")
+	logrus.Infof("Connected to MPD")
 	// defer conn.Close()
 	c.Conn = conn
 
@@ -105,11 +104,11 @@ func (c *MpdClient) reconnectLoop() {
 			err := c.Conn.Ping()
 
 			if err != nil {
-				fmt.Printf("MPD ping down %s\n", err)
+				logrus.Errorf("MPD ping down %s", err)
 				c.setState(c.down)
 
 			} else {
-				// fmt.Printf("MPD ping\n")
+				// logrus.Infof("MPD ping")
 			}
 		}
 	}
@@ -129,7 +128,7 @@ func (c *MpdClient) GetDatabaseItem(mpdPath string) map[string]string {
 		}
 
 		if len(attrs) > 0 {
-			fmt.Printf("Got MPD attrs (%d) %s\n", len(attrs), attrs[0])
+			logrus.Infof("Got MPD attrs (%d) %s", len(attrs), attrs[0])
 			return attrs[0]
 
 		} else {
@@ -152,9 +151,9 @@ func (c *MpdClient) PlChanges(version, start, end int) ([]mpd.Attrs, error) {
 		// Request the single playlist item at this position.
 		cmd = c.Conn.Command("plchanges %d %d", version, start)
 	case start < 0 && end >= 0:
-		return nil, errors.New("negative start index")
+		return nil, fmt.Errorf("negative start index")
 	default:
-		panic("unreachable")
+		return nil, fmt.Errorf("unreachable")
 	}
 	return cmd.AttrsList("file")
 }
@@ -172,9 +171,9 @@ func (c *MpdClient) PlChangePosId(version, start, end int) ([]mpd.Attrs, error) 
 		// Request the single playlist item at this position.
 		cmd = c.Conn.Command("plchangesposid %d %d", version, start)
 	case start < 0 && end >= 0:
-		return nil, errors.New("negative start index")
+		return nil, fmt.Errorf("negative start index")
 	default:
-		panic("unreachable")
+		return nil, fmt.Errorf("unreachable")
 	}
 	return cmd.AttrsList("cpos")
 }

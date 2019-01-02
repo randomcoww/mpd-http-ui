@@ -2,14 +2,14 @@ version: "3.3"
 services:
   mpd:
     build:
-      context: ./mpd
+      context: ./configs/mpd
       dockerfile: Dockerfile
     ports:
     - "6600:6600"
     - "8000:8000"
     volumes:
-    - ./env/mpd_mount/music:/mpd/music
-    - ./env/mpd_mount/logs:/mpd/logs
+    - ./test/mpd_mount/music:/mpd/music
+    - ./test/mpd_mount/logs:/mpd/logs
     restart: on-failure
   elasticsearch:
     image: elasticsearch:5-alpine
@@ -18,13 +18,13 @@ services:
     - "9200:9200"
   mpd_indexer:
     build:
-      context: ./mpd_indexer
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile.mpd_indexer
     links:
     - "mpd:mpd"
     - "elasticsearch:elasticsearch"
     volumes:
-    - ./env/mpd_mount/logs:/mpd/logs
+    - ./test/mpd_mount/logs:/mpd/logs
     command:
     - "-logfile"
     - "/mpd/logs/log"
@@ -35,8 +35,8 @@ services:
     restart: on-failure
   api_server:
     build:
-      context: ./api_server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile.api_server
     ports:
     - "3000:3000"
     links:

@@ -4,7 +4,7 @@ v-navigation-drawer(
   app
   fixed
   right
-  :width="800"
+  :width="1000"
   v-resize="onResize"
 )
 
@@ -20,6 +20,8 @@ v-navigation-drawer(
       :remain="this.buffer"
       :onscroll="onScroll"
       :tobottom="onScrollBottom"
+      :debounce="50"
+      :bench="this.buffer"
     )
       div(v-for="(playlistItem, index) in playlistItems" :index="index" :key="playlistItem.Id")
         draggable(v-model="playlistItems" @end="onMoved" :options="{group: 'playlistItems', handle: '.handle'}" :id="index")
@@ -144,7 +146,6 @@ export default {
 
       for (i = this.start; i <= this.end; i++) {
         if (
-          typeof (this.$store.state.websocket.socket.playlist[i]) === 'undefined' ||
           !('Id' in this.$store.state.websocket.socket.playlist[i])
         ) {
           foundNullStart = true
@@ -155,7 +156,6 @@ export default {
 
       for (i = this.end; i >= this.start; i--) {
         if (
-          typeof (this.$store.state.websocket.socket.playlist[i]) === 'undefined' ||
           !('Id' in this.$store.state.websocket.socket.playlist[i])
         ) {
           foundNullEnd = true

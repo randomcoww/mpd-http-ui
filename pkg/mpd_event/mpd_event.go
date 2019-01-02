@@ -3,10 +3,10 @@
 package mpd_event
 
 import (
-	"fmt"
 	"time"
 
 	mpd "github.com/fhs/gompd/mpd"
+	"github.com/sirupsen/logrus"
 )
 
 type MpdEvent struct {
@@ -57,14 +57,14 @@ func (c *MpdEvent) drainState(ch chan struct{}) {
 }
 
 func (c *MpdEvent) connect() error {
-	fmt.Printf("Connecting to MPD...\n")
+	logrus.Infof("Connecting to MPD...")
 	conn, err := mpd.Dial(c.proto, c.addr)
 
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Connected to MPD\n")
+	logrus.Infof("Connected to MPD")
 	// defer conn.Close()
 	c.conn = conn
 
@@ -88,9 +88,8 @@ func (c *MpdEvent) reconnectLoop() {
 
 		case <-c.up:
 			changed, err := c.conn.Command("idle").Strings("changed")
-
 			if err != nil {
-				fmt.Printf("MPD event watcher error %s\n", err)
+				logrus.Errorf("MPD event watcher error %s", err)
 				c.setState(c.down)
 
 			} else {

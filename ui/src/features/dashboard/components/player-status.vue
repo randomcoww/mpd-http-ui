@@ -2,7 +2,7 @@
   v-list(two-line subheader)
 
     audio(
-      :src="mpdUrl"
+      :src="mpdURL"
       autoplay="autoplay"
       ref="mpdplayer"
       preload="none"
@@ -70,7 +70,7 @@ export default {
       }
     }, 300),
     //
-    mpdUrl () {
+    mpdURL () {
       return process.env.NODE_ENV === 'development' ? 'http://localhost:8000/mpd' : '/mpd'
     },
     currentSong () {
