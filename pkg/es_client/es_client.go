@@ -2,14 +2,14 @@
 // Add and remove to elasticsearch
 //
 
-package es_handler
+package es_client
 
 import (
 	"context"
 	"errors"
 	"time"
 
-	"github.com/randomcoww/go-mpd-es/util"
+	"github.com/randomcoww/go-mpd-es/pkg/util"
 	"github.com/sirupsen/logrus"
 	elastic "gopkg.in/olivere/elastic.v5"
 )
@@ -19,7 +19,7 @@ var (
 )
 
 type EsClient struct {
-	eventHub *event_hub.EventHub
+	eventHub *util.EventHub
 
 	url       string
 	index     string
@@ -33,7 +33,7 @@ type EsClient struct {
 // new ES client
 func NewEsClient(url, index, indexType, mapping string) *EsClient {
 	c := &EsClient{
-		eventHub: event_hub.NewEventHub(),
+		eventHub: util.NewEventHub(),
 
 		url:       url,
 		index:     index,
@@ -41,8 +41,8 @@ func NewEsClient(url, index, indexType, mapping string) *EsClient {
 		mapping:   mapping,
 	}
 
-	go c.processLoop()
-	go c.processBulk()
+	go c.run()
+	go c.runIndexUpdate()
 
 	// initial state is down
 	c.eventHub.Send <- "api_down"
@@ -50,7 +50,7 @@ func NewEsClient(url, index, indexType, mapping string) *EsClient {
 	return c
 }
 
-func (c *EsClient) processLoop() {
+func (c *EsClient) run() {
 	errClient := c.eventHub.NewClient([]string{
 		"api_down", "index_down",
 	})
@@ -63,7 +63,7 @@ func (c *EsClient) processLoop() {
 				c.eventHub.Send <- "index_down"
 
 				err := c.connect()
-				if err != nil {
+				if err == nil {
 					logrus.Infof("API ready")
 					c.eventHub.Send <- "api_ready"
 				} else {
@@ -95,11 +95,7 @@ func (c *EsClient) processLoop() {
 }
 
 // run bulk processing job
-func (c *EsClient) processBulk() {
-	errClient := c.eventHub.NewClient([]string{
-		"api_down", "index_down",
-	})
-
+func (c *EsClient) runIndexUpdate() {
 	readyClient := c.eventHub.NewClient([]string{
 		"index_ready",
 	})
@@ -109,16 +105,6 @@ func (c *EsClient) processBulk() {
 	})
 
 	for {
-		select {
-		case event := <-errClient.Events:
-			switch event {
-			case "api_down", "index_down":
-				errClient.Drain()
-				logrus.Error("Bulk update - wait for index to become ready")
-				readyClient.WaitEvent("index_ready")
-			}
-		}
-
 		select {
 		case event := <-updateClient.Events:
 			switch event {
@@ -133,10 +119,12 @@ func (c *EsClient) processBulk() {
 						// API down?
 						logrus.Errorf("Bulk update: Test API failed: %v", err)
 						c.eventHub.Send <- "api_down"
+						readyClient.WaitEvent("api_ready")
 					} else if !exists {
 						// Index not found
 						logrus.Errorf("Bulk update: Index not found: %s", c.index)
 						c.eventHub.Send <- "index_down"
+						readyClient.WaitEvent("index_ready")
 					} else {
 						// Ok to try updating
 						_, err := c.bulk.Do(ctx)

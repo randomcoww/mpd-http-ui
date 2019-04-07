@@ -1,4 +1,4 @@
-package event_hub
+package util
 
 type EventHub struct {
 	Send       chan string
