@@ -7,9 +7,9 @@ package es_handler
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	elastic "gopkg.in/olivere/elastic.v5"
 )
 
@@ -18,10 +18,7 @@ var (
 )
 
 type EsClient struct {
-	up          chan struct{}
-	down        chan struct{}
-	indexDown   chan struct{}
-	bulkRequest chan struct{}
+	eventHub *eventHub
 
 	url       string
 	index     string
@@ -30,88 +27,67 @@ type EsClient struct {
 
 	conn *elastic.Client
 	bulk *elastic.BulkService
-
-	Ready chan struct{}
 }
 
 // new ES client
 func NewEsClient(url, index, indexType, mapping string) *EsClient {
 	c := &EsClient{
-		up:          make(chan struct{}, 1),
-		down:        make(chan struct{}, 1),
-		indexDown:   make(chan struct{}, 1),
-		bulkRequest: make(chan struct{}, 1),
+		eventHub: newEventHub(),
 
 		url:       url,
 		index:     index,
 		indexType: indexType,
 		mapping:   mapping,
-
-		Ready: make(chan struct{}, 1),
 	}
 
-	c.setState(c.down)
 	go c.processLoop()
 	go c.processBulk()
+
+	// initial state is down
+	c.eventHub.send <- "api_down"
 
 	return c
 }
 
-func (c *EsClient) setState(ch chan struct{}) {
-	select {
-	case ch <- struct{}{}:
-	default:
-	}
-}
-
-func (c *EsClient) drainState(ch chan struct{}) {
-	for {
-		select {
-		case <-ch:
-		default:
-			return
-		}
-	}
-}
-
 func (c *EsClient) processLoop() {
+	errClient := c.eventHub.newClient([]string{
+		"api_down", "index_down",
+	})
+
 	for {
 		select {
+		case event := <-errClient.events:
+			switch event {
+			case "api_down":
+				c.eventHub.send <- "index_down"
 
-		case <-c.down:
-			for {
 				err := c.connect()
 				if err != nil {
-					time.Sleep(2000 * time.Millisecond)
-					continue
+					logrus.Infof("API ready")
+					c.eventHub.send <- "api_ready"
+				} else {
+					logrus.Error("Service down")
 				}
-				break
-			}
-			c.setState(c.indexDown)
 
-		// test getting or creating index
-		case <-c.indexDown:
-			for {
+			case "index_down":
 				err := c.getOrCreateIndex()
-				if err != nil {
-					time.Sleep(2000 * time.Millisecond)
-					continue
+				if err == nil {
+					logrus.Infof("Index ready")
+					c.eventHub.send <- "index_ready"
+				} else {
+					logrus.Error("Index not found")
 				}
-				break
 			}
-			c.setState(c.up)
-			c.setState(c.Ready)
 
-		// ping and reconnect
-		case <-time.After(10000 * time.Millisecond):
+		// healthcheck
+		case <-time.After(2000 * time.Millisecond):
 			_, _, err := c.conn.Ping(c.url).Do(ctx)
 
 			if err != nil {
-				fmt.Printf("ES ping down %s\n", err)
-				c.setState(c.down)
-
+				logrus.Errorf("Ping down: %v", err)
+				c.eventHub.send <- "api_down"
 			} else {
-				// fmt.Printf("ES ping\n")
+				// logrus.Infof("Ping")
 			}
 		}
 	}
@@ -119,56 +95,72 @@ func (c *EsClient) processLoop() {
 
 // run bulk processing job
 func (c *EsClient) processBulk() {
+	errClient := c.eventHub.newClient([]string{
+		"api_down", "index_down",
+	})
+
+	readyClient := c.eventHub.newClient([]string{
+		"index_ready",
+	})
+
+	updateClient := c.eventHub.newClient([]string{
+		"index_update",
+	})
+
 	for {
 		select {
-		case <-c.bulkRequest:
+		case event := <-errClient.events:
+			switch event {
+			case "api_down", "index_down":
+				errClient.drain()
+				logrus.Error("Bulk update - wait for index to become ready")
+				readyClient.waitEvent("index_ready")
+			}
+		}
 
-			if c.bulk.NumberOfActions() > 0 {
-
-				for {
-					time.Sleep(2000 * time.Millisecond)
+		select {
+		case event := <-updateClient.events:
+			switch event {
+			case "index_update":
+				if c.bulk.NumberOfActions() > 0 {
 
 					// bulk process seems to lose data on failure
 					// make sure index is accessible before trying bulk write
 					exists, err := c.conn.IndexExists(c.index).Do(ctx)
+
 					if err != nil {
-						fmt.Printf("ES index test - %s\n", err)
-						continue
+						// API down?
+						logrus.Errorf("Bulk update: Test API failed: %v", err)
+						c.eventHub.send <- "api_down"
+					} else if !exists {
+						// Index not found
+						logrus.Errorf("Bulk update: Index not found: %s", c.index)
+						c.eventHub.send <- "index_down"
+					} else {
+						// Ok to try updating
+						_, err := c.bulk.Do(ctx)
+						if err != nil {
+							logrus.Errorf("Bulk update: Failed: %v", err)
+						} else {
+							logrus.Info("Bulk update: Success")
+						}
 					}
-
-					if !exists {
-						fmt.Printf("ES index test - not found\n")
-						continue
-					}
-
-					fmt.Printf("ES index test - success\n")
-					break
-				}
-
-				c.drainState(c.bulkRequest)
-				_, err := c.bulk.Do(ctx)
-
-				if err != nil {
-					fmt.Printf("Error processsing ES bulk %s\n", err)
-
-				} else {
-					fmt.Printf("Processsed ES bulk\n")
 				}
 			}
+		// Add some throtting for bulk update
+		case <-time.After(2000 * time.Millisecond):
 		}
 	}
 }
 
 // get connection
 func (c *EsClient) connect() error {
-	fmt.Printf("Connecting to ES...\n")
 	conn, err := elastic.NewSimpleClient(elastic.SetURL(c.url))
 
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Connected to ES\n")
 	// defer conn.Close()
 	c.conn = conn
 	c.bulk = conn.Bulk()
@@ -184,12 +176,12 @@ func (c *EsClient) getOrCreateIndex() error {
 	}
 
 	if exists {
-		fmt.Printf("ES index exists\n")
+		logrus.Info("Index exists: %s", c.index)
 		return nil
 	}
 
 	if len(c.mapping) == 0 {
-		return errors.New("ES mapping not provided")
+		return errors.New("Mapping not provided")
 	}
 
 	_, err = c.conn.CreateIndex(c.index).BodyString(c.mapping).Do(ctx)
@@ -197,7 +189,7 @@ func (c *EsClient) getOrCreateIndex() error {
 		return err
 	}
 
-	fmt.Printf("Created ES index\n")
+	logrus.Info("Index created: %s", c.index)
 	return nil
 }
 
@@ -209,7 +201,7 @@ func (c *EsClient) IndexBulk(id string, s interface{}) {
 		Id(id).
 		Doc(s))
 
-	c.setState(c.bulkRequest)
+	c.eventHub.send <- "index_update"
 }
 
 // Add deletion to next bulk update
@@ -219,7 +211,7 @@ func (c *EsClient) DeleteBluk(id string) {
 		Type(c.indexType).
 		Id(id))
 
-	c.setState(c.bulkRequest)
+	c.eventHub.send <- "index_update"
 }
 
 // search database - go through elasticsearch
