@@ -8,18 +8,18 @@ import (
 	"errors"
 	"time"
 
+	mpd "github.com/fhs/gompd/mpd"
 	"github.com/randomcoww/go-mpd-es/pkg/util"
 	"github.com/sirupsen/logrus"
-	mpd "github.com/fhs/gompd/mpd"
 )
 
 type MpdClient struct {
 	eventHub *util.EventHub
 
-	ApiClient     *mpd.Client
-	eventClient     *mpd.Client
-	proto    string
-	addr     string
+	ApiClient   *mpd.Client
+	eventClient *mpd.Client
+	proto       string
+	addr        string
 
 	// Ready chan struct{}
 	Events chan string
@@ -29,7 +29,7 @@ type MpdClient struct {
 func NewMpdClient(proto, addr string) *MpdClient {
 	c := &MpdClient{
 		eventHub: util.NewEventHub(),
-		
+
 		proto: proto,
 		addr:  addr,
 
@@ -48,9 +48,9 @@ func NewMpdClient(proto, addr string) *MpdClient {
 	return c
 }
 
-// 
+//
 // API client
-// 
+//
 
 func (c *MpdClient) run() {
 	errClient := c.eventHub.NewClient([]string{
@@ -163,9 +163,9 @@ func (c *MpdClient) PlChangePosId(version, start, end int) ([]mpd.Attrs, error) 
 	return cmd.AttrsList("cpos")
 }
 
-// 
+//
 // Event capture client. This needs to be a separate connection from API client
-// 
+//
 
 func (c *MpdClient) runEventClient() {
 	errClient := c.eventHub.NewClient([]string{
