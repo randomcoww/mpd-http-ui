@@ -10,43 +10,30 @@ services:
     volumes:
     - ./env/mpd_mount/music:/mpd/music
     - ./env/mpd_mount/logs:/mpd/logs
+    - ./env/mpd_mount/socket:/mpd/socket
     restart: on-failure
   elasticsearch:
     image: elasticsearch:5-alpine
     restart: on-failure
     ports:
     - "9200:9200"
-  mpd_indexer:
+  server:
     build:
-      context: ./mpd_indexer
+      context: ./server
       dockerfile: Dockerfile
     links:
     - "mpd:mpd"
     - "elasticsearch:elasticsearch"
     volumes:
     - ./env/mpd_mount/logs:/mpd/logs
-    command:
-    - "-logfile"
-    - "/mpd/logs/log"
-    - "-mpdurl"
-    - "mpd:6600"
-    - "-esurl"
-    - "http://elasticsearch:9200"
-    restart: on-failure
-  api_server:
-    build:
-      context: ./api_server
-      dockerfile: Dockerfile
-    ports:
-    - "3000:3000"
-    links:
-    - "mpd:mpd"
-    - "elasticsearch:elasticsearch"
+    - ./env/mpd_mount/socket:/mpd/socket
     command:
     - "-listenurl"
     - "0.0.0.0:3000"
-    - "-mpdurl"
-    - "mpd:6600"
+    - "-logfile"
+    - "/mpd/logs/log"
+    - "-mpdsocket"
+    - "/mpd/socket/mpd.sock"
     - "-esurl"
     - "http://elasticsearch:9200"
     restart: on-failure

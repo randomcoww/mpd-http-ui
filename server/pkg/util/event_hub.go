@@ -19,7 +19,7 @@ func NewEventHub() *EventHub {
 		Unregister: make(chan *EventClient),
 		Clients:    make(map[*EventClient]struct{}),
 	}
-	e.run()
+	go e.run()
 	return e
 }
 
@@ -29,7 +29,9 @@ func (e *EventHub) NewClient(filter []string) *EventClient {
 		Filter: make(map[string]struct{}),
 	}
 	for _, e := range filter {
-		c.Filter[e] = struct{}{}
+		if e != "" {
+			c.Filter[e] = struct{}{}
+		}
 	}
 	e.Register <- c
 	return c
@@ -54,8 +56,8 @@ func (e *EventHub) run() {
 					select {
 					case c.Events <- event:
 					default:
-						close(c.Events)
-						delete(e.Clients, c)
+						// close(c.Events)
+						// delete(e.Clients, c)
 					}
 				}
 			}

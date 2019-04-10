@@ -1,6 +1,6 @@
 FROM golang:alpine as BUILD
 
-WORKDIR /go/src/goapp/
+WORKDIR /go/src/github.com/randomcoww/go-mpd-es
 COPY . .
 
 RUN set -x \
@@ -13,6 +13,6 @@ RUN set -x \
 
 FROM alpine:edge
 
-COPY --from=BUILD /go/src/goapp/goapp /
+COPY --from=BUILD /go/src/github.com/randomcoww/go-mpd-es/go-mpd-es /
 
-ENTRYPOINT ["/goapp"]
+ENTRYPOINT ["/go-mpd-es"]
